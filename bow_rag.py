@@ -49,7 +49,7 @@ class BOW_RAG(graph.RAG):
 
 
 
-    def calc_edge_weights(self, weight_func = cumu_diff, attr_label="WEIGHT", **kwargs):
+    def calc_edge_weights(self, weight_func = cumu_diff, attr_label="weight", **kwargs):
         
         #Iterate over edges and calling weight_func on the nodes
         for n1, n2, d in self.edges_iter(data=True):
