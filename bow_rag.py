@@ -8,7 +8,7 @@ Created on Mon Aug  7 14:25:44 2017
 
 #Imports
 from skimage.future import graph
-import networkx as nx
+#import networkx as nx
 from itertools import repeat
 import numpy as  np
 
@@ -23,36 +23,54 @@ class BOW_RAG(graph.RAG):
         
         #Call the RAG constructor
         super().__init__(label_image=seg_img, connectivity=2, data=None, **attr)
-        
-        #Build tuple of BOW-dictionaries
-        bow_tuple = (dict(zip(bins,repeat(0, len(bins)))) for node in self.nodes_iter())
-        
-        #Set BOW attribute to nodes by attaching node id's to bow dicts
-        nx.set_node_attributes(self, "BOW", dict(zip(self.nodes_iter(), bow_tuple)))
-        
-        #Set pixel counting attribute to each node to count the pixels per segment
-        nx.set_node_attributes(self, "PIXELS", dict(zip(self.nodes_iter(), repeat(0, self.number_of_nodes()))))
-        
+                
+        #Set node attributes
+        for n in self.__iter__():
+            self.node[n].update({'labels': [n],
+                              'pixel count': 0,
+                              'bow': dict(zip(bins,repeat(0, len(bins))))})
+
         #Populate the node attributes with data
         for a, b in np.nditer([seg_img, word_img]):
             
             #Pixel count incrementation
-            self.node[int(a)]["PIXELS"] += 1
+            self.node[int(a)]["pixel count"] += 1
             
             #BOW attribute individual bin incrementation
-            self.node[int(a)]["BOW"][int(b)] += 1
-            
-        #Turn count values into percentages
-        for node, data in self.nodes_iter(data=True):
-            for key, value in data["BOW"].items():
-                data["BOW"][key] = round((value/data["PIXELS"])*100, 3)
+            self.node[int(a)]["bow"][int(b)] += 1
 
+    
+    def get_node_data(self, node, percentages=False):
+        
+        #create mutable copy of the node for calculation
+        node_copy = dict(self.node[node])
+        
+        if percentages:
+            for key, value in node_copy["bow"].items():
+                node_copy["bow"][key] = round((value/node_copy["pixel count"])*100, 3)
+            
+            #return with counts transformed into percentages
+            return node_copy
+        
+        else:
+            #return raw node attributes
+            return node_copy
+        
 
 
     def calc_edge_weights(self, weight_func = cumu_diff, attr_label="weight", **kwargs):
         
         #Iterate over edges and calling weight_func on the nodes
         for n1, n2, d in self.edges_iter(data=True):
-            d[attr_label] = weight_func(self.node[n1], self.node[n2], **kwargs)
+            d[attr_label] = weight_func(self, n1, n2, **kwargs)
             
-            
+       
+        
+        
+#Simple merging function
+def _bow_merge_simple(graph, src, dst):
+    
+    graph.node[dst]['pixel count'] += graph.node[src]['pixel count']
+    
+    for key, val in graph.node[src]['bow'].items():
+        graph.node[dst]['bow'][key] += val
