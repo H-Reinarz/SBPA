@@ -12,6 +12,7 @@ from skimage.future import graph
 from itertools import repeat
 import statistics as stats
 import numpy as  np
+import copy
 
 from bow_diff import cumu_diff
 
@@ -47,7 +48,7 @@ class BOW_RAG(graph.RAG):
     def get_node_data(self, node, percentages=False):
         
         #create mutable copy of the node for calculation
-        node_copy = dict(self.node[node])
+        node_copy = copy.deepcopy(self.node[node])
         
         if percentages:
             for key, value in node_copy["bow"].items():
