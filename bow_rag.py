@@ -10,6 +10,7 @@ Created on Mon Aug  7 14:25:44 2017
 from skimage.future import graph
 #import networkx as nx
 from itertools import repeat
+import statistics as stats
 import numpy as  np
 
 from bow_diff import cumu_diff
@@ -38,6 +39,9 @@ class BOW_RAG(graph.RAG):
             
             #BOW attribute individual bin incrementation
             self.node[int(a)]["bow"][int(b)] += 1
+            
+        #Init edge weight statistics
+        self.edge_weight_stats = {}
 
     
     def get_node_data(self, node, percentages=False):
@@ -64,7 +68,32 @@ class BOW_RAG(graph.RAG):
         for n1, n2, d in self.edges_iter(data=True):
             d[attr_label] = weight_func(self, n1, n2, **kwargs)
             
-       
+     
+    def get_edge_weight_list(self, attr_label="weight"):
+        return sorted(list(data[attr_label] for n1,n2,data in self.edges(data=True)))
+        
+        
+    def calc_edge_weight_stats(self, attr_label="weight"):
+        weight_list = self.get_edge_weight_list(attr_label)
+        
+        self.edge_weight_stats['min'] = min(weight_list)
+        self.edge_weight_stats['max'] = max(weight_list)
+        self.edge_weight_stats['mean'] = stats.mean(weight_list)
+        self.edge_weight_stats['median'] = stats.median(weight_list)
+        self.edge_weight_stats['stdev'] = stats.stdev(weight_list)
+
+    
+    def get_edge_weight_percentile(self, p, attr_label="weight", as_threshhold=False):
+        weight_list = self.get_edge_weight_list(attr_label)
+        
+        index = round(len(weight_list)*(p/100))
+        
+        if as_threshhold:
+           result = (weight_list[index] +  weight_list[index+1]) /2
+           return result
+        else:
+            return weight_list[index]
+        
         
         
 #Simple merging function
