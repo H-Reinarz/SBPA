@@ -1,3 +1,5 @@
 /LBP_BINS
-/builds
+/build
+/__pycache__
+*.md5
 *.c
