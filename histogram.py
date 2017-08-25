@@ -48,3 +48,12 @@ def chi2_distance(histA, histB, eps = 1e-10):
 	return d
 
 chi2 = chi2_distance(hist1, hist2)
+
+def chi2(histA, histB, bins):
+    
+    d = 0
+    for i in range(len(bins)-1):
+        d += ((histA[i] - histB[i])**2)/histA[i]
+    return d
+
+chi22 = chi2(hist1, hist2, _)
