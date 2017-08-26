@@ -3,3 +3,8 @@
 /__pycache__
 *.md5
 *.c
+*.pyc
+*.pyd
+*.lib
+*.exp
+*.obj
