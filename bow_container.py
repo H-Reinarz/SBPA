@@ -9,7 +9,7 @@ Created on Mon Aug 21 20:39:13 2017
 import numpy as np
 from skimage._shared.utils import assert_nD
 from itertools import repeat
-
+from math import ceil
 
 
 
@@ -64,35 +64,68 @@ class hist:
     
     def normalize(self, n):
         self.norm_container = np.zeros(len(self.container))
-        for ix, e1 in enumerate(np.nditer([self.container])):
-            self.norm_container[ix] = round((e1/n*100, 3))
+        for ix, e in enumerate(np.nditer([self.container])):
+            self.norm_container[ix] = round((e/n*100, 3))
             
         #set falg attribute
         self.is_normalized = True
 
     
     def increment(self, key):
-        pass
+        self[key] += 1
+
     
-    def __iter__(self):       
-        pass
-    
-    def keys(self):
-        pass
-    
-    def values(self):
-        pass
+    def __iter__(self):
+        if self.keys is not None:
+            for k, v in self.keys.items():
+                yield (k, self.container[v])                        
+            pass
+        else:
+            yield from enumerate(self.container)
+
     
     def __getitem__(self, key):
+        if self.keys is not None:
+            return self.container[self.keys[key]]
+        else:
+            return self.container[key]
         pass
 
     def __setitem__(self, key, value):
-        pass
+        if self.keys is not None:
+            self.container[self.keys[key]] = value
+        else:
+            self.container[key] = value
+
+
 
     def __call__(self, mode):
-        pass
+        if mode == "dict":
+            return {k: self.container[k] for k in self.keys}
+        elif mode == "array":
+            return self.container
+        else:
+            raise ValueError
+
     
     def __str__(self):
+        k = "K: "
+        c = "C: "
+        n = "N: "
+        
+        k_line1 = k + " ".join([str(k).ljust(6) for k in self.keys()])
+        c_line1 = c + " ".join([str(e).ljust(6) for e in self.container])
+        
+        if self.is_normalized:
+            n_line1 = n + " ".join([str(e).ljust(6) for e in self.norm_container])
+            
+        remaining = len(k_line1)
+            
+        while remaining > 100:
+            pass
+            
+        
+        
         pass
     
 
