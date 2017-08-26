@@ -12,12 +12,12 @@ Created on Fri Aug 25 19:40:45 2017
 import numpy as np
 cimport numpy as cnp
 from libc.math cimport sin, cos, abs
-from skimage._shared.interpolation cimport bilinear_interpolation, round
+from interpolation cimport bilinear_interpolation, round
 from skimage._shared.transform cimport integrate
 import cython
 
-#cdef extern from "H:/Anaconda3/Lib/site-packages/numpy/core/include/numpy/npy_math.h":
-#    double NAN "NPY_NAN"
+cdef extern from "numpy/npy_math.h":
+    double NAN "NPY_NAN"
 
 ctypedef fused any_int:
     cnp.uint8_t
@@ -28,6 +28,7 @@ ctypedef fused any_int:
     cnp.int16_t
     cnp.int32_t
     cnp.int64_t
+
 
 cdef inline int _bit_rotate_right(int value, int length) nogil:
     """Cyclic bit shift to the right.
@@ -46,7 +47,7 @@ def _local_binary_pattern(double[:, ::1] image,
 
     LBP is an invariant descriptor that can be used for texture classification.
 
-    Parameters
+    Parameter
     ----------
     image : (N, M) double array
         Graylevel image.
@@ -81,7 +82,6 @@ def _local_binary_pattern(double[:, ::1] image,
     # pre-allocate arrays for computation
     cdef double[::1] texture = np.zeros(P, dtype=np.double)
     cdef signed char[::1] signed_texture = np.zeros(P, dtype=np.int8)
-    cdef signed char[::1] niLBP = np.zeros(P, dtype=np.int8)
     cdef int[::1] rotation_chain = np.zeros(P, dtype=np.int32)
 
     output_shape = (image.shape[0], image.shape[1])
@@ -91,12 +91,12 @@ def _local_binary_pattern(double[:, ::1] image,
     cdef Py_ssize_t cols = image.shape[1]
 
     cdef double lbp
-    cdef Py_ssize_t r, c, changes, i, j
+    cdef Py_ssize_t r, c, changes, i
     cdef Py_ssize_t rot_index, n_ones
     cdef cnp.int8_t first_zero, first_one
 
     # To compute the variance features
-    cdef double sum_, var_, texture_i, u
+    cdef double sum_, var_, texture_i
 
     with nogil:
         for r in range(image.shape[0]):
@@ -105,6 +105,7 @@ def _local_binary_pattern(double[:, ::1] image,
                     texture[i] = bilinear_interpolation(&image[0, 0], rows, cols,
                                                         r + rp[i], c + cp[i],
                                                         'C', 0)
+                
                 # signed / thresholded texture
                 for i in range(P):
                     if texture[i] - image[r, c] >= 0:
@@ -129,24 +130,20 @@ def _local_binary_pattern(double[:, ::1] image,
                     if var_ != 0:
                         lbp = var_
                     else:
-                        lbp = 0
+                        lbp = NAN
                 # if method == 'nilbp':
                 elif method == 'X':
-                    sum_ = 0.0
+                    # sum(texture)
                     for i in range(P):
-                        u = 0.0
-                        for j in range(P):
-                            u += texture[j]
-                        u = u / P
-                        
-                        sum_ = (texture[i] - u) * 2**i
-                        
-                        if sum_ >= 0:
-                            niLBP[i] = 1
+                        sum_ += texture[i]
+                    # signed / thresholded texture
+                    for i in range(P):
+                        if (texture[i] - (sum_ / P)) >= 0: # x_rn - (sum(texture) / len(texture))
+                            signed_texture[i] = 1
                         else:
-                            niLBP[i] = 0
+                            signed_texture[i] = 0
                     for i in range(P):
-                        lbp += niLBP[i] * weights[i]
+                        lbp += signed_texture[i] * weights[i]
                 # if method == 'uniform':
                 elif method == 'U' or method == 'N':
                     # determine number of 0 - 1 changes

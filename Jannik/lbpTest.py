@@ -53,12 +53,16 @@ for i in range(P):
         u += texture[j]
     u = u / P
     
-    sum_ = (texture[i] - u) * 2**i
-    
+    sum_ = (texture[i] - u)
     if sum_ >= 0:
-        niLBP.append(1)
+        sum_ = 1
     else:
-        niLBP.append(0)
+        sum_ = 0
     
+    sum_ = sum_ * 2**i
+    
+    niLBP.append(sum_)
+
+print(sum(niLBP))    
 print(niLBP)    
     

@@ -11,7 +11,10 @@ Methods to characterize image textures.
 
 import numpy as np
 from skimage._shared.utils import assert_nD
-from skimage.feature._texture import _local_binary_pattern
+import sys
+sys.path.append("H:/Geography/MASTERARBEIT/src/github/Jannik/_LBP")
+
+import _lbp
 
 def local_binary_pattern(image, P, R, method='default'):
     """Gray scale and rotation invariant LBP (Local Binary Patterns).
@@ -69,5 +72,5 @@ def local_binary_pattern(image, P, R, method='default'):
         'nilbp': ord('X')
     }
     image = np.ascontiguousarray(image, dtype=np.double)
-    output = _local_binary_pattern(image, P, R, methods[method.lower()])
+    output = _lbp._local_binary_pattern(image, P, R, methods[method.lower()])
     return output
