@@ -48,17 +48,18 @@ class hist:
                 self.container, self.bins  = np.histogram(image, kwargs["bins"])        
             else:
                 raise ValueError("Missing key word parameter 'bins'!")
+                
         #Call with wrong arguments
         else:
             raise ValueError("Unusable parameter configuration. Please check source or docs!")
 
 
         #Normalize along with instance creation
-        if kwargs["normalize"]:
+        if kwargs.__contains__("normalize") and kwargs["normalize"] == True:
             if not kwargs.__contains__("pixel_count"):
                 raise ValueError("Missing key word parameter 'pixel_count'!")
             else:
-                self.normalize(kwargs["pixel count"])
+                self.normalize(kwargs["pixel_count"])
         else:
            self.is_normalized = False
 
@@ -68,7 +69,7 @@ class hist:
         """Normalize bin counts against a given number (i.e. pixel count)"""
         self.norm_container = np.zeros(len(self.container))
         for ix, e in enumerate(np.nditer([self.container])):
-            self.norm_container[ix] = round((e/n*100, 3))
+            self.norm_container[ix] = round(e/n*100, 3)
             
         #set falg attribute
         self.is_normalized = True
@@ -106,13 +107,26 @@ class hist:
 
 
 
-    def __call__(self, mode):
+    def __call__(self, mode, normalized):
         """Return either a dictionary or numpy array representation of the class for use in functions.
         Parameter 'mode' must be either 'dict' or 'array'"""
+        
+        if normalized:
+            cont = self.norm_container
+        else:
+            cont = self.container
+        
+        
+        if self.keys is not None:
+            keys = self.keys
+        else:
+            keys = range(len(self.container))
+        
+        
         if mode == "dict":
-            return {k: self.container[k] for k in self.keys}
+            return {k: cont[k] for k in keys}
         elif mode == "array":
-            return self.container
+            return cont
         else:
             raise ValueError("Parameter 'mode' must be either 'dict' or 'array'!")
             
@@ -125,7 +139,11 @@ class hist:
         per_ln = 12
         starts = ("K: ", "C: ", "N: ")
         
-        keys = [str(k).ljust(fill) for k in self.keys]
+        if self.keys is not None:
+            keys = [str(k).ljust(fill) for k in self.keys]
+        else:
+            keys = [str(k).ljust(fill) for k in range(len(self.container))]
+            
         counts = [str(e).ljust(fill) for e in self.container]
         
         if self.is_normalized:
@@ -148,9 +166,20 @@ class hist:
             for n in range(len(line[0])):
                 sub_ln = starts[n] + " ".join([str(e[n]) for e in line])
                 sub_lines.append(sub_ln)
-            str_lines.append("\n".join(sub_lines)+ "="*(fill*per_ln+10))
+            str_lines.append("\n".join(sub_lines)+ "\n" + "="*(fill*per_ln+10))
         
         return "\n".join(str_lines)
 
 
-#test = hist()
+
+
+#Class Testing
+if __name__ == '__main__':
+    
+    #IMPORTS
+    from skimage import io
+
+    image = io.imread('/home/hre070/MA/DJI_0095_CLIP.jpg')
+    
+    #INIT
+    
