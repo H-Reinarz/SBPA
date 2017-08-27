@@ -44,17 +44,19 @@ class hist:
             
             self.keys = None
             
-            self.container, self.bins  = np.histogram(image, kwargs["bins"])        
-            
+            if kwargs.__contains__("bins"):
+                self.container, self.bins  = np.histogram(image, kwargs["bins"])        
+            else:
+                raise ValueError("Missing key word parameter 'bins'!")
         #Call with wrong arguments
         else:
-            raise ValueError
+            raise ValueError("Unusable parameter configuration. Please check source or docs!")
 
 
         #Normalize along with instance creation
         if kwargs["normalize"]:
             if not kwargs.__contains__("pixel_count"):
-                raise ValueError
+                raise ValueError("Missing key word parameter 'pixel_count'!")
             else:
                 self.normalize(kwargs["pixel count"])
         else:
@@ -63,6 +65,7 @@ class hist:
 
     
     def normalize(self, n):
+        """Normalize bin counts against a given number (i.e. pixel count)"""
         self.norm_container = np.zeros(len(self.container))
         for ix, e in enumerate(np.nditer([self.container])):
             self.norm_container[ix] = round((e/n*100, 3))
@@ -72,10 +75,12 @@ class hist:
 
     
     def increment(self, key):
+        """Increment a given bin by one"""
         self[key] += 1
 
     
     def __iter__(self):
+        """Iterate over bins and counts of the histogram""" 
         if self.keys is not None:
             for k, v in self.keys.items():
                 yield (k, self.container[v])                        
@@ -85,6 +90,7 @@ class hist:
 
     
     def __getitem__(self, key):
+        """Return count value for given bin"""
         if self.keys is not None:
             return self.container[self.keys[key]]
         else:
@@ -92,6 +98,7 @@ class hist:
         pass
 
     def __setitem__(self, key, value):
+        """Set count value for given bin"""
         if self.keys is not None:
             self.container[self.keys[key]] = value
         else:
@@ -100,33 +107,50 @@ class hist:
 
 
     def __call__(self, mode):
+        """Return either a dictionary or numpy array representation of the class for use in functions.
+        Parameter 'mode' must be either 'dict' or 'array'"""
         if mode == "dict":
             return {k: self.container[k] for k in self.keys}
         elif mode == "array":
             return self.container
         else:
-            raise ValueError
+            raise ValueError("Parameter 'mode' must be either 'dict' or 'array'!")
+            
 
-    
+
     def __str__(self):
-        k = "K: "
-        c = "C: "
-        n = "N: "
+        """Return formatted string of the histogram"""
         
-        k_line1 = k + " ".join([str(k).ljust(6) for k in self.keys()])
-        c_line1 = c + " ".join([str(e).ljust(6) for e in self.container])
+        fill = 8
+        per_ln = 12
+        starts = ("K: ", "C: ", "N: ")
+        
+        keys = [str(k).ljust(fill) for k in self.keys]
+        counts = [str(e).ljust(fill) for e in self.container]
         
         if self.is_normalized:
-            n_line1 = n + " ".join([str(e).ljust(6) for e in self.norm_container])
-            
-        remaining = len(k_line1)
-            
-        while remaining > 100:
-            pass
-            
+            norms = [str(e).ljust(fill) for e in self.norm_container]
+            elements = list(zip(keys, counts, norms))
+        else:
+            elements = list(zip(keys, counts))
         
         
-        pass
-    
+
+        lines = []
+        
+        for x in range(ceil(len(elements)/per_ln)):
+            lines.append(elements[:per_ln])
+            elements = elements[per_ln:]
+        
+        str_lines = []
+        for line in lines:
+            sub_lines = []
+            for n in range(len(line[0])):
+                sub_ln = starts[n] + " ".join([str(e[n]) for e in line])
+                sub_lines.append(sub_ln)
+            str_lines.append("\n".join(sub_lines)+ "="*(fill*per_ln+10))
+        
+        return "\n".join(str_lines)
+
 
 #test = hist()
