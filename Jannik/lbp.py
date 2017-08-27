@@ -16,7 +16,7 @@ sys.path.append("H:/Geography/MASTERARBEIT/src/github/Jannik/_LBP")
 
 import _lbp
 
-def local_binary_pattern(image, P, R, method='default'):
+def local_binary_pattern(image, textureMap, P, R, method='default'):
     """Gray scale and rotation invariant LBP (Local Binary Patterns).
 
     LBP is an invariant descriptor that can be used for texture classification.
@@ -61,7 +61,12 @@ def local_binary_pattern(image, P, R, method='default'):
            http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.214.6851,
            2004.
     """
+    
+    if textureMap is None:
+        textureMap = image
+    
     assert_nD(image, 2)
+    assert_nD(textureMap, 2)
 
     methods = {
         'default': ord('D'),
@@ -72,5 +77,6 @@ def local_binary_pattern(image, P, R, method='default'):
         'nilbp': ord('X')
     }
     image = np.ascontiguousarray(image, dtype=np.double)
-    output = _lbp._local_binary_pattern(image, P, R, methods[method.lower()])
+    textureMap = np.ascontiguousarray(image, dtype=np.double)
+    output = _lbp._local_binary_pattern(image, textureMap, P, R, methods[method.lower()])
     return output

@@ -7,6 +7,6 @@ from skimage import io
 #http://cython.readthedocs.io/en/latest/src/tutorial/cython_tutorial.html
 
 image = io.imread("D:/Bilder/bilbo-baggins.jpg", as_grey = True )
-result = lbp.local_binary_pattern(image, 8, 1, 'var')
+result = lbp.local_binary_pattern(image, None, 8, 1, 'default')
 import matplotlib.pyplot as plt
 plt.imshow(result)

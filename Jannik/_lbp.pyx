@@ -41,7 +41,7 @@ cdef inline int _bit_rotate_right(int value, int length) nogil:
     """
     return (value >> 1) | ((value & 1) << (length - 1))
     
-def _local_binary_pattern(double[:, ::1] image,
+def _local_binary_pattern(double[:, ::1] image, double[:, ::1] textureMap,
                           int P, float R, char method='D'):
     """Gray scale and rotation invariant LBP (Local Binary Patterns).
 
@@ -108,7 +108,7 @@ def _local_binary_pattern(double[:, ::1] image,
                 
                 # signed / thresholded texture
                 for i in range(P):
-                    if texture[i] - image[r, c] >= 0:
+                    if texture[i] - textureMap[r, c] >= 0:
                         signed_texture[i] = 1
                     else:
                         signed_texture[i] = 0
