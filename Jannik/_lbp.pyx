@@ -133,6 +133,7 @@ def _local_binary_pattern(double[:, ::1] image, double[:, ::1] textureMap,
                         lbp = NAN
                 # if method == 'nilbp':
                 elif method == 'X':
+                    sum_ = 0.0
                     # sum(texture)
                     for i in range(P):
                         sum_ += texture[i]
