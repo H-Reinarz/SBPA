@@ -13,8 +13,8 @@ def cumu_diff(graph, node1, node2, **kwargs):
     n2 = graph.get_node_data(node2, percentages=True)
      
     c_diff = 0
-    for k,v in n1["bow"].items():
-        c_diff += abs(v-n2["bow"][k])
+    for k,v in n1['tex'].items():
+        c_diff += abs(v-n2['tex'][k])
     return c_diff
 
 
