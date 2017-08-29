@@ -5,6 +5,9 @@ Created on Sun Aug 13 17:45:55 2017
 
 @author: hre070
 """
+from stats import mean
+
+
 
 #Weighting function: Cumulative difference over bins   
 def cumu_diff(graph, node1, node2, **kwargs):
@@ -23,9 +26,28 @@ def _cumu_weight(graph, src, dst, n):
     return {'weight': cumu_diff(graph, dst, n)}
 
 
-def diff_wrapper(graph, node1, node2, attr_dict, result_label='weight'):
+def weight_wrapper(graph, node1, node2, attr_dict, result_label='weight'):
     
-    #Code
+    #Deep copies
+    n1 = graph.deepcopy_node(node1)
+    n2 = graph.deepcopy_node(node2)
     
-    final_diff = 0
-    return {result_label: final_diff}
+    #Iteration
+    par_results = []
+    
+    for attr, info in attr_dict.items():
+        func = info[0]
+        factor = info[1]
+        
+        if isinstance(n1[attr], list):
+            result = mean([func(v[0], v[1]) for v in zip(n1[attr], n2[attr])])
+        else:
+            result = func(n1[attr], n2[attr])
+            
+        par_results.append(result*factor)
+        
+        
+    
+    
+    final_result = mean(par_results)
+    return {result_label: final_result}
