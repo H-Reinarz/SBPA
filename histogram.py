@@ -6,6 +6,7 @@ Created on Mon Aug 21 12:14:54 2017
 """
 
 ### Compare Histogram formulas http://docs.opencv.org/2.4/modules/imgproc/doc/histograms.html?highlight=comparehist#comparehist
+
 from math import sqrt
 
 # Computes Histogram intersection
