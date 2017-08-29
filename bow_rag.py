@@ -28,11 +28,21 @@ class BOW_RAG(graph.RAG):
                 
         #Set node attributes
         for n in self.__iter__():
+            #get color values for super pixel
             label_mask = seg_img == n
+            masked_color = color_image[label_mask]
+            
+            #account for color channels: one hist per channel
+            if len(masked_color.shape) == 2:
+                color_hists = [hist(masked_color[:,dim], bins=color_bins) for dim in range(masked_color.shape[1])]
+            else:
+                color_hists = hist(masked_color, bins=color_bins)
+            
+            #Assign attributes to node
             self.node[n].update({'labels': [n],
                               'pixel_count': seg_img[label_mask].size,
                               'tex': hist(set(tex_bins)),
-                              'color': hist(color_image[label_mask], bins=color_bins)})
+                              'color': color_hists})
     
         #Populate the node attributes with data
         for a, b in np.nditer([seg_img, tex_img]):                       
@@ -43,8 +53,7 @@ class BOW_RAG(graph.RAG):
         self.edge_weight_stats = {}
 
     
-    def deepcopy_node(self, node):
-        
+    def deepcopy_node(self, node):       
         #create mutable copy of the node for calculation
         return copy.deepcopy(self.node[node])
         

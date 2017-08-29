@@ -7,7 +7,7 @@ Created on Mon Aug 21 20:39:13 2017
 """
 
 import numpy as np
-from skimage._shared.utils import assert_nD
+#from skimage._shared.utils import assert_nD
 from itertools import repeat
 from math import ceil
 
@@ -39,13 +39,13 @@ class hist:
 
         #image
         elif len(args) == 1 and isinstance(args[0], np.ndarray):
-            image = args[0]
-            assert_nD(image, 2)
+            values = args[0]
+            #assert_nD(image, 2)
             
             self.keys = None
             
             if kwargs.__contains__("bins"):
-                self.container, self.bins  = np.histogram(image, kwargs["bins"])        
+                self.container, self.bins  = np.histogram(values, kwargs["bins"])        
             else:
                 raise ValueError("Missing key word parameter 'bins'!")
                 

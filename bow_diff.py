@@ -23,3 +23,9 @@ def _cumu_weight(graph, src, dst, n):
     return {'weight': cumu_diff(graph, dst, n)}
 
 
+def diff_wrapper(graph, node1, node2, attr_dict, result_label='weight'):
+    
+    #Code
+    
+    final_diff = 0
+    return {result_label: final_diff}
