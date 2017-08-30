@@ -6,7 +6,7 @@ Created on Sun Aug 13 17:45:55 2017
 @author: hre070
 """
 from stats import mean
-
+from histogram import Intersection
 
 
 #Weighting function: Cumulative difference over bins   
@@ -26,7 +26,7 @@ def _cumu_weight(graph, src, dst, n):
     return {'weight': cumu_diff(graph, dst, n)}
 
 
-def weight_wrapper(graph, node1, node2, attr_dict, result_label='weight'):
+def weight_wrapper(graph, node1, node2, attr_dict={'tex': (Intersection, 1), 'color': (Intersection, 1) }, result_label='weight'):
     
     #Deep copies
     n1 = graph.deepcopy_node(node1)
@@ -40,9 +40,9 @@ def weight_wrapper(graph, node1, node2, attr_dict, result_label='weight'):
         factor = info[1]
         
         if isinstance(n1[attr], list):
-            result = mean([func(v[0], v[1]) for v in zip(n1[attr], n2[attr])])
+            result = mean([func(v[0](), v[1]()) for v in zip(n1[attr], n2[attr])])
         else:
-            result = func(n1[attr], n2[attr])
+            result = func(n1[attr](), n2[attr]())
             
         par_results.append(result*factor)
         
