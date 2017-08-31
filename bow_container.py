@@ -79,7 +79,15 @@ class hist:
         """Increment a given bin by one"""
         self[key] += 1
 
-    
+ 
+    def __iadd__(self, other):
+        """Incremental addition on counts"""
+        for b, c in other:
+            self[b] = self[b] + c
+        
+        
+        
+        
     def __iter__(self):
         """Iterate over bins and counts of the histogram""" 
         if self.keys is not None:
@@ -107,7 +115,7 @@ class hist:
 
 
 
-    def __call__(self, mode, normalized):
+    def __call__(self, mode='array', normalized=True):
         """Return either a dictionary or numpy array representation of the class for use in functions.
         Parameter 'mode' must be either 'dict' or 'array'"""
         

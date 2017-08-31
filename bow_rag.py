@@ -14,7 +14,7 @@ import statistics as stats
 import numpy as  np
 import copy
 
-from bow_diff import cumu_diff
+from bow_diff import weight_wrapper
 from bow_container import hist
 
 #Subclass of RAG specified for BOW classification
@@ -49,6 +49,15 @@ class BOW_RAG(graph.RAG):
             #BOW attribute individual bin incrementation
             self.node[int(a)]['tex'].increment(int(b))
             
+        
+        #Normalize all histograms
+        for n in self.__iter__():
+            self.node[n]['tex'].normalize(self.node[n]['pixel_count'])
+            for c_hist in self.node[n]['color']:
+                c_hist.normalize(self.node[n]['pixel_count'])
+        
+        
+        
         #Init edge weight statistics
         self.edge_weight_stats = {}
 
@@ -59,11 +68,11 @@ class BOW_RAG(graph.RAG):
         
 
 
-    def calc_edge_weights(self, weight_func = cumu_diff, attr_label='weight', **kwargs):
+    def calc_edge_weights(self, attr_dict, attr_label='weight'):
         
         #Iterate over edges and calling weight_func on the nodes
         for n1, n2, d in self.edges_iter(data=True):
-            d[attr_label] = weight_func(self, n1, n2, **kwargs)
+            d.update(weight_wrapper(self, n1, n2, attr_dict, attr_label=attr_label))
             
      
     def get_edge_weight_list(self, attr_label='weight'):
@@ -96,7 +105,16 @@ class BOW_RAG(graph.RAG):
 #Simple merging function
 def _bow_merge_simple(graph, src, dst):
     
+    #pixel counter
     graph.node[dst]['pixel_count'] += graph.node[src]['pixel_count']
     
-    for b, c in graph.node[src]['tex']:
-        graph.node[dst]['tex'][b] += c
+    #texture histogram
+    graph.node[dst]['tex'] += graph.node[src]['tex']
+    graph.node[dst]['tex'].normalize(graph.node[dst]['pixel_count'])
+    
+    #color histograms
+    for ix, h_src in enumerate(graph.node[src]['color']):
+        graph.node[dst]['color'][ix] += h_src
+        graph.node[dst]['color'][ix].normalize(graph.node[dst]['pixel_count'])
+    
+    
