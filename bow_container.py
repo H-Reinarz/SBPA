@@ -84,6 +84,7 @@ class hist:
         """Incremental addition on counts"""
         for b, c in other:
             self[b] = self[b] + c
+            return self
         
         
         

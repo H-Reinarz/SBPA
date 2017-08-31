@@ -14,7 +14,7 @@ import statistics as stats
 import numpy as  np
 import copy
 
-from bow_diff import weight_wrapper
+
 from bow_container import hist
 
 #Subclass of RAG specified for BOW classification
@@ -68,11 +68,11 @@ class BOW_RAG(graph.RAG):
         
 
 
-    def calc_edge_weights(self, attr_dict, attr_label='weight'):
+    def calc_edge_weights(self, weight_func):
         
         #Iterate over edges and calling weight_func on the nodes
         for n1, n2, d in self.edges_iter(data=True):
-            d.update(weight_wrapper(self, n1, n2, attr_dict, attr_label=attr_label))
+            d.update(weight_func(self, n1, n2))
             
      
     def get_edge_weight_list(self, attr_label='weight'):
