@@ -12,11 +12,11 @@ Methods to characterize image textures.
 import numpy as np
 from skimage._shared.utils import assert_nD
 import sys
-sys.path.append("H:/Geography/MASTERARBEIT/src/github/Jannik/_LBP")
+sys.path.append("H:/Geography/MASTERARBEIT/src/github/_LBP")
 
 import _lbp
 
-def local_binary_pattern(image, textureMap, P, R, method='default'):
+def local_binary_pattern(image, textureMap, P, R, method='default', nilbp = True):
     """Gray scale and rotation invariant LBP (Local Binary Patterns).
 
     LBP is an invariant descriptor that can be used for texture classification.
@@ -74,9 +74,14 @@ def local_binary_pattern(image, textureMap, P, R, method='default'):
         'uniform': ord('U'),
         'nri_uniform': ord('N'),
         'var': ord('V'),
-        'nilbp': ord('X')
     }
+    
+    if nilbp:
+        nilbp = 1
+    else:
+        nilbp = 0
+        
     image = np.ascontiguousarray(image, dtype=np.double)
     textureMap = np.ascontiguousarray(image, dtype=np.double)
-    output = _lbp._local_binary_pattern(image, textureMap, P, R, methods[method.lower()])
+    output = _lbp._local_binary_pattern(image, textureMap, P, R, methods[method.lower()], nilbp)
     return output

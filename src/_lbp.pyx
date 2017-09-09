@@ -9,11 +9,11 @@ Created on Fri Aug 25 19:40:45 2017
 #cython: boundscheck=False
 #cython: nonecheck=False
 #cython: wraparound=False
+from libcpp cimport bool
 import numpy as np
 cimport numpy as cnp
 from libc.math cimport sin, cos, abs
 from interpolation cimport bilinear_interpolation, round
-from skimage._shared.transform cimport integrate
 import cython
 
 cdef extern from "numpy/npy_math.h":
@@ -42,7 +42,7 @@ cdef inline int _bit_rotate_right(int value, int length) nogil:
     return (value >> 1) | ((value & 1) << (length - 1))
     
 def _local_binary_pattern(double[:, ::1] image, double[:, ::1] textureMap,
-                          int P, float R, char method='D'):
+                          int P, float R, char method='D', int nilbp = 1):
     """Gray scale and rotation invariant LBP (Local Binary Patterns).
 
     LBP is an invariant descriptor that can be used for texture classification.
@@ -106,13 +106,25 @@ def _local_binary_pattern(double[:, ::1] image, double[:, ::1] textureMap,
                                                         r + rp[i], c + cp[i],
                                                         'C', 0)
                 
-                # signed / thresholded texture
-                for i in range(P):
-                    if texture[i] - textureMap[r, c] >= 0:
-                        signed_texture[i] = 1
-                    else:
-                        signed_texture[i] = 0
-
+                if nilbp == 0:
+                    # signed / thresholded texture
+                    for i in range(P):
+                        if texture[i] - textureMap[r, c] >= 0:
+                            signed_texture[i] = 1
+                        else:
+                            signed_texture[i] = 0
+                else:
+                    sum_ = 0.0
+                    # sum(texture)
+                    for i in range(P):
+                        sum_ += texture[i]
+                    # signed / thresholded texture
+                    for i in range(P):
+                        if (texture[i] - (sum_ / P)) >= 0: # x_rn - (sum(texture) / len(texture))
+                            signed_texture[i] = 1
+                        else:
+                            signed_texture[i] = 0
+    
                 lbp = 0
 
                 # if method == 'var':
@@ -131,20 +143,6 @@ def _local_binary_pattern(double[:, ::1] image, double[:, ::1] textureMap,
                         lbp = var_
                     else:
                         lbp = NAN
-                # if method == 'nilbp':
-                elif method == 'X':
-                    sum_ = 0.0
-                    # sum(texture)
-                    for i in range(P):
-                        sum_ += texture[i]
-                    # signed / thresholded texture
-                    for i in range(P):
-                        if (texture[i] - (sum_ / P)) >= 0: # x_rn - (sum(texture) / len(texture))
-                            signed_texture[i] = 1
-                        else:
-                            signed_texture[i] = 0
-                    for i in range(P):
-                        lbp += signed_texture[i] * weights[i]
                 # if method == 'uniform':
                 elif method == 'U' or method == 'N':
                     # determine number of 0 - 1 changes
