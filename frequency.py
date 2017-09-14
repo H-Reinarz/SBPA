@@ -60,10 +60,22 @@ end  = start+width
 clip = im_gray[start:end, start:end]
 
 
+#Generate random noise within brightness spectrum of the image
+
+factor = 10000
+lower = clip.min()*factor
+upper = clip.max()*factor
+
+noise = np.random.randint(lower, upper, size=clip.shape)/factor
+
+
+clip = noise
+
+
+
 #clip = im_gray
 
-clip = gaussian(clip, sigma=20)
-
+#
 
 #Apply shifted furier transform
 dft = fftshift(fft2(clip))
