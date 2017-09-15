@@ -42,6 +42,19 @@ def dft_summary(freq, width=1):
     return class_dict
 
 
+def xcut_auc(value_dict, cut_perc, width):
+    
+    area = sum(value_dict.values())
+    cut_value = area/100*cut_perc
+
+    for key, value in value_dict.items():
+        if cut_value < value:            
+          return key - int(round(cut_value/(value/width)))
+        else:
+            cut_value -= value
+    
+
+
 #======================================================================================
 from skimage import io
 from skimage.color import rgb2gray
@@ -69,7 +82,7 @@ upper = clip.max()*factor
 noise = np.random.randint(lower, upper, size=clip.shape)/factor
 
 
-clip = noise
+clip += noise
 
 
 
@@ -93,7 +106,9 @@ dft_log = np.log(np.abs(dft))
 #
 #dft = np.random.randint(60, 9999, size=in_shape)/10000
 
-result = dft_summary(dft_log, 10)
+result = dft_summary(dft_log, 5)
+
+x_cut = xcut_auc(result, 80, 5)
 
 plot_values = np.array(list(result.values()))
 
@@ -110,7 +125,8 @@ ax[1].imshow(dft_log)
 f, ax = plt.subplots(nrows=3, figsize=(10,10), sharex=True)
 
 ax[0].plot(plot_values)
+ax[0].axvline(x_cut, color='r')
 ax[1].plot(deriv1, color="r")
 ax[2].plot(deriv2, color="g")
     
-print(result)
+#print(result)
