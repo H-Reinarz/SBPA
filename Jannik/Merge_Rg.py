@@ -107,6 +107,9 @@ def merge_hierarchical(labels, rag, seeds, thresh, rag_copy, in_place_merge,
         
         seedRun = True
         new_id = s
+        
+        print("Seed ID: ", s)
+        
         while seedRun:
             
             edge_heap = []
@@ -119,12 +122,23 @@ def merge_hierarchical(labels, rag, seeds, thresh, rag_copy, in_place_merge,
         
                 # Reference to the heap item in the graph
                 data['heap item'] = heap_item
-    
+            
+            
+            print(edge_heap)
+            
+            print("Length of edge_heap: ", len(edge_heap))
+            
+            print("Weight is: ", edge_heap[0][0], " Threshold is: ", thresh)
+            
             if len(edge_heap) > 0 and edge_heap[0][0] < thresh:
                 _, n1, n2, valid = heapq.heappop(edge_heap)
-        
+                
+                
                 # Ensure popped edge is valid, if not, the edge is discarded
                 if valid:
+                    
+                    
+                    
                     # Invalidate all neigbors of `src` before its deleted
                     """  
                     for nbr in rag.neighbors(n1):
@@ -139,12 +153,16 @@ def merge_hierarchical(labels, rag, seeds, thresh, rag_copy, in_place_merge,
                         src, dst = n1, next_id
                     else:
                         src, dst = n1, n2
-        
+                    
+                    print("Merge Pixel ", src, " and ", dst)
                     merge_func(rag, src, dst)
                     new_id = rag.merge_nodes(src, dst, weight_func)
+                    
+                    print("New seed id: ", new_id)
                     #_revalidate_node_edges(rag, new_id, edge_heap)
                 
             else:
+                print("----- Next Seed -----")
                 seedRun = False
 
     label_map = np.arange(labels.max() + 1)
