@@ -9,7 +9,8 @@ Created on Wed Sep 13 12:22:51 2017
 import numpy as np
 from scipy.spatial.distance import euclidean
 from matplotlib import pyplot as plt
-
+from math import pi
+from numpy import fft
 
 def create_radius_map(shape, array_dtype=np.float32):
     
@@ -56,41 +57,53 @@ def xcut_auc(value_dict, cut_perc, width):
             cut_value -= value
     
 
-def lowpass_filter(shifted_dft, cut, stretch, upper, lower):
+def lowpass_filter(shifted_dft, radius, stretch, upper, lower):
     
     span = upper - lower
     sigmoid = [upper-(3*(x**2)-2*(x**3))*span for x in list(np.linspace(0,1, stretch))]
 
-    radius = create_radius_map(shifted_dft.shape)
+    radius_array = create_radius_map(shifted_dft.shape)
     
     #Filter creation
-    filter_array = np.zeros(shape=radius.shape, dtype=np.float32)
-    filter_array[radius <= cut] = upper
-    filter_array[cut < radius] = lower
+    filter_array = np.zeros(shape=radius_array.shape, dtype=np.float32)
+    filter_array[radius_array <= radius] = upper
+    filter_array[radius < radius_array] = lower
 
     for ix, f in enumerate(sigmoid):
         add = ix+1 
-        filter_array[radius == cut+add] = f
+        filter_array[radius_array == radius+add] = f
     
     
     return shifted_dft*filter_array
     
 
+def calc_lbp_radius(dft_shape, radius):
+    
+    denom = max(dft_shape)
+    
+    wavelength = (2*pi)/(radius*2*pi/denom)
+    
+    return int(round(wavelength/2))
 
 
 class frequency_setup:
     
-    def __init__(self, image):
-        self.dft = fftshift(fft2(image))
+    def __init__(self, image, width, cut, stretch, upper, lower):
+        self.dft = fft.fftshift(fft.fft2(image))
+        
+        self.summary = dft_summary(self.dft_log(), width)
+        
+        self.cut_value = xcut_auc(self.summary, cut, width)
+        
+        self.filtered_dft = lowpass_filter(self.dft, self.cut_value, stretch, upper, lower)
+        
+        self.lbp_radius = calc_lbp_radius(self.dft.shape, self.cut_value)
             
     def dft_log(self):
         return np.log(np.abs(self.dft))
-    
-    def summarize(self, width):
-        return dft_summary(self.dft, width)
-    
-    def high_cut_value(self, percentage):
-        pass
+
+    def filtererd_dft_log(self):   
+        return np.log(np.abs(self.filtered_dft))
 
 #======================================================================================
 
@@ -100,7 +113,7 @@ if __name__ == "__main__":
     from skimage import io
     from skimage.color import rgb2gray
     from skimage.filters import gaussian
-    from numpy.fft import *
+#    from numpy.fft import *
     
     image = io.imread("/home/hre070/MA/DJI_0095_CLIP.jpg")
     im_gray = rgb2gray(image)
@@ -116,14 +129,14 @@ if __name__ == "__main__":
     
     #Generate random noise within brightness spectrum of the image
     
-    factor = 10000
-    lower = clip.min()*factor
-    upper = clip.max()*factor
-    
-    noise = np.random.randint(lower, upper, size=clip.shape)/factor
-    
-    
-    clip += noise
+#    factor = 10000
+#    lower = clip.min()*factor
+#    upper = clip.max()*factor
+#    
+#    noise = np.random.randint(lower, upper, size=clip.shape)/factor
+#    
+#    
+#    clip += noise
     
     
     
@@ -132,30 +145,12 @@ if __name__ == "__main__":
     #
     
     #Apply shifted furier transform
-    dft = fftshift(fft2(clip))
+#    dft = fftshift(fft2(clip))
     
     dft_log = np.log(np.abs(dft))
     
     
-    def butter2d_lp(shape, f, n, pxd=1):
-        pxd = float(pxd)
-        rows, cols = shape
-        x = np.linspace(-0.5, 0.5, cols)  * cols / pxd
-        y = np.linspace(-0.5, 0.5, rows)  * rows / pxd
-        radius = np.sqrt((x**2)[np.newaxis] + (y**2)[:, np.newaxis])
-        filt = 1 / (1.0 + (radius / f)**(2*n))
-        return filt
     
-    filt = butter2d_lp(clip.shape, 2, 5, pxd=50)
-    dft_new = dft * filt
-    new_image = np.abs(np.fft.ifft2(np.fft.ifftshift(dft_new)))  
-    
-    plt.imshow(filt)
-    
-    #in_shape = (10, 20)
-    #ring_width = 1
-    #
-    #dft = np.random.randint(60, 9999, size=in_shape)/10000
     
     result = dft_summary(dft_log, 5)
     
@@ -166,14 +161,20 @@ if __name__ == "__main__":
     deriv1 = np.diff(plot_values)
     deriv2 = np.diff(deriv1)
     
+
+
+    #CLASS TEST
+    test = frequency_setup(clip, 5, 80, 10, 1.0, 0.1)
     
-    f, ax = plt.subplots(nrows=5, figsize=(20,20))
-    
-    ax[0].imshow(clip, cmap="gray")
-    ax[1].imshow(dft_log)
-    ax[2].imshow(filt)
-    ax[3].imshow(np.log(np.abs(dft_new)))
-    ax[4].imshow(new_image, cmap="gray")    
+    print(test.cut_value, test.lbp_radius)
+
+
+  
+#    f, ax = plt.subplots(nrows=2, figsize=(20,20))
+#    
+#    ax[0].imshow(clip, cmap="gray")
+#    ax[1].imshow(dft_log)
+#    ax[2].imshow(new_image, cmap="gray")    
     
 #    f, ax = plt.subplots(nrows=3, figsize=(10,10), sharex=True)
 #    
