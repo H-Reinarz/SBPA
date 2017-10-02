@@ -101,8 +101,80 @@ def merge_hierarchical(labels, rag, seeds, thresh, rag_copy, in_place_merge,
     """
     if rag_copy:
         rag = rag.copy()
-
+        
+    # NEW
+    seedDict = dict.fromkeys(seeds, True)
     
+    for n in rag:
+        if n in seeds:
+            rag.node[n]['seed'] = True
+        else:
+            rag.node[n]['seed'] = False
+    
+    growing = True
+    
+    while growing:
+        for s in seeds:
+            
+            print("\nGrow Seed: ", s)
+            
+            if seedDict[s] == True:
+                edge_heap = []
+                
+                for n1, n2, data in rag.edges(s, data=True):
+                    if rag.node[n2]['seed'] == False:
+                        # Push a valid edge in the heap
+                        wt = data['weight']
+                        heap_item = [wt, n1, n2, True]
+                        heapq.heappush(edge_heap, heap_item)
+                
+                        # Reference to the heap item in the graph
+                        data['heap item'] = heap_item
+                
+                
+                print(edge_heap)
+                
+                print("Length of edge_heap: ", len(edge_heap))
+                
+                print("Weight is: ", edge_heap[0][0], " Threshold is: ", thresh)
+                
+                if len(edge_heap) > 0 and edge_heap[0][0] < thresh:
+                    _, n1, n2, valid = heapq.heappop(edge_heap)
+                    
+                    
+                    # Ensure popped edge is valid, if not, the edge is discarded
+                    if valid:
+    
+                        if not in_place_merge:
+                            next_id = rag.next_id()
+                            _rename_node(rag, n2, next_id)
+                            src, dst = n1, next_id
+                        else:
+                            src, dst = n2, n1
+                        
+                        print("Merge Pixel ", src, " and ", dst)
+                        merge_func(rag, src, dst)
+                        new_id = rag.merge_nodes(src, dst, weight_func)
+                        
+                        print("New seed id: ", new_id)
+    
+                    
+                else:
+                    print("----- Seed ", s, " can't grow anymore -----")
+                    seedDict[s] = False
+            
+        if all(value == False for value in seedDict.values()):
+            growing = False
+    
+    
+    
+    
+    
+    
+    
+    
+    """
+    # OLD
     for s in seeds:
         
         seedRun = True
@@ -137,22 +209,12 @@ def merge_hierarchical(labels, rag, seeds, thresh, rag_copy, in_place_merge,
                 # Ensure popped edge is valid, if not, the edge is discarded
                 if valid:
                     
-                    
-                    
-                    # Invalidate all neigbors of `src` before its deleted
-                    """  
-                    for nbr in rag.neighbors(n1):
-                        _invalidate_edge(rag, n1, nbr)
-        
-                    for nbr in rag.neighbors(n2):
-                        _invalidate_edge(rag, n2, nbr)
-                    """
                     if not in_place_merge:
                         next_id = rag.next_id()
                         _rename_node(rag, n2, next_id)
                         src, dst = n1, next_id
                     else:
-                        src, dst = n1, n2
+                        src, dst = n2, n1
                     
                     print("Merge Pixel ", src, " and ", dst)
                     merge_func(rag, src, dst)
@@ -164,7 +226,7 @@ def merge_hierarchical(labels, rag, seeds, thresh, rag_copy, in_place_merge,
             else:
                 print("----- Next Seed -----")
                 seedRun = False
-
+    """
     label_map = np.arange(labels.max() + 1)
     for ix, (n, d) in enumerate(rag.nodes(data=True)):
         for label in d['labels']:
