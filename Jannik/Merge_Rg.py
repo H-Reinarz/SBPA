@@ -113,6 +113,8 @@ def merge_hierarchical(labels, rag, seeds, thresh, rag_copy, in_place_merge,
     
     growing = True
     
+    
+    """
     while growing:
         for s in seeds:
             
@@ -166,6 +168,7 @@ def merge_hierarchical(labels, rag, seeds, thresh, rag_copy, in_place_merge,
         if all(value == False for value in seedDict.values()):
             growing = False
     
+        """
     
     
     
@@ -173,14 +176,13 @@ def merge_hierarchical(labels, rag, seeds, thresh, rag_copy, in_place_merge,
     
     
     
-    """
     # OLD
     for s in seeds:
         
         seedRun = True
         new_id = s
         
-        print("Seed ID: ", s)
+        print("\nSeed ID: ", s)
         
         while seedRun:
             
@@ -226,7 +228,7 @@ def merge_hierarchical(labels, rag, seeds, thresh, rag_copy, in_place_merge,
             else:
                 print("----- Next Seed -----")
                 seedRun = False
-    """
+    
     label_map = np.arange(labels.max() + 1)
     for ix, (n, d) in enumerate(rag.nodes(data=True)):
         for label in d['labels']:
