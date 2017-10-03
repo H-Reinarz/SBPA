@@ -33,7 +33,7 @@ def dft_summary(freq, width=1):
             
     class_array = create_radius_map(freq.shape)//width
             
-    plt.imshow(class_array)
+    #plt.imshow(class_array)
     
     class_dict = dict()
     
@@ -74,7 +74,7 @@ def lowpass_filter(shifted_dft, radius, stretch, upper, lower):
         filter_array[radius_array == radius+add] = f
     
     
-    return shifted_dft*filter_array
+    return filter_array
     
 
 def calc_lbp_radius(dft_shape, radius):
@@ -88,14 +88,16 @@ def calc_lbp_radius(dft_shape, radius):
 
 class frequency_setup:
     
-    def __init__(self, image, width, cut, stretch, upper, lower):
+    def __init__(self, image, ring_width, cut_percent, lp_stretch, lp_upper, lp_lower):
         self.dft = fft.fftshift(fft.fft2(image))
         
-        self.summary = dft_summary(self.dft_log(), width)
+        self.summary = dft_summary(self.dft_log(), ring_width)
         
-        self.cut_value = xcut_auc(self.summary, cut, width)
+        self.cut_value = xcut_auc(self.summary, cut_percent, ring_width)
         
-        self.filtered_dft = lowpass_filter(self.dft, self.cut_value, stretch, upper, lower)
+        self.low_pass = lowpass_filter(self.dft, self.cut_value, lp_stretch, lp_upper, lp_lower)
+        
+        self.filtered_dft = self.dft * self.low_pass
         
         self.lbp_radius = calc_lbp_radius(self.dft.shape, self.cut_value)
             
@@ -104,6 +106,9 @@ class frequency_setup:
 
     def filtererd_dft_log(self):   
         return np.log(np.abs(self.filtered_dft))
+    
+    def result(self):
+        return np.abs(fft.ifft2(fft.ifftshift(self.filtered_dft)))
 
 #======================================================================================
 
@@ -147,19 +152,19 @@ if __name__ == "__main__":
     #Apply shifted furier transform
 #    dft = fftshift(fft2(clip))
     
-    dft_log = np.log(np.abs(dft))
+    #dft_log = np.log(np.abs(dft))
     
     
     
     
-    result = dft_summary(dft_log, 5)
-    
-    x_cut = xcut_auc(result, 80, 5)
-    
-    plot_values = np.array(list(result.values()))
-    
-    deriv1 = np.diff(plot_values)
-    deriv2 = np.diff(deriv1)
+#    result = dft_summary(dft_log, 5)
+#    
+#    x_cut = xcut_auc(result, 80, 5)
+#    
+#    plot_values = np.array(list(result.values()))
+#    
+#    deriv1 = np.diff(plot_values)
+#    deriv2 = np.diff(deriv1)
     
 
 
@@ -168,6 +173,7 @@ if __name__ == "__main__":
     
     print(test.cut_value, test.lbp_radius)
 
+    plt.imshow(test.result(), cmap="gray")
 
   
 #    f, ax = plt.subplots(nrows=2, figsize=(20,20))
