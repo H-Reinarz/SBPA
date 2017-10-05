@@ -9,15 +9,27 @@ from skimage.measure import regionprops
 
 
 
-def plot_sp_labels(axes, labels, fontsize, **text_kwargs):
+def plot_sp_labels(axes, labels, fontsize, subset=None, **text_kwargs):
     
-    wext = axes.get_window_extent()
+    #increment to include 0
+    labels+=1
     
-    pt_ratio = wext.height/labels.shape[0]
-    print(pt_ratio)
-    
+    #convert fontsize to pt
+    wext = axes.get_window_extent()    
+    pt_ratio = wext.height/labels.shape[0]    
     pt_size = round(fontsize*pt_ratio)
     
+    
+    if subset is not None:
+        subset = set(subset)
+    
+    #iteratively plot the labels
     for reg in regionprops(labels):
-        y, x = reg.centroid
-        axes.text(x, y, reg.label, fontsize=pt_size, ha='center', va='center', **text_kwargs)
+        true_label = reg.label-1
+        
+        if subset is None or true_label in subset:       
+            y, x = reg.centroid
+            axes.text(x, y, true_label, fontsize=pt_size, ha='center', va='center', **text_kwargs)
+    
+    #decrement to restore original data    
+    labels -= 1
