@@ -33,3 +33,24 @@ def plot_sp_labels(axes, labels, fontsize, subset=None, **text_kwargs):
     
     #decrement to restore original data    
     labels -= 1
+    
+    
+    
+def show_seeds(axes, labels, seeds, marker, **plot_kwargs):
+
+    #increment to include 0
+    labels+=1
+    
+    seeds = set(seeds)   
+    
+    regs = [reg for reg in regionprops(labels) if reg.label in seeds]
+        
+    y_list = [reg.centroid[0] for reg in regs]            
+    x_list = [reg.centroid[1] for reg in regs]
+        
+    axes.plot(x_list, y_list, marker, **plot_kwargs)
+    
+    #decrement to restore original data    
+    labels -= 1
+
+    
