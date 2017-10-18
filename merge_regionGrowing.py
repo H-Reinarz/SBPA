@@ -134,9 +134,9 @@ def merge_rg(labels, rag, seeds, thresh, rag_copy, in_place_merge,
                 
                # print(edge_heap)
                 
-               # print("Length of edge_heap: ", len(edge_heap))
+                print("Length of edge_heap: ", len(edge_heap))
                 
-               # print("Weight is: ", edge_heap[0][0], " Threshold is: ", thresh)
+                print("Weight is: ", edge_heap[0][0], " Threshold is: ", thresh)
                 
                 if len(edge_heap) > 0 and edge_heap[0][0] < thresh:
                     _, n1, n2, valid = heapq.heappop(edge_heap)
@@ -152,15 +152,15 @@ def merge_rg(labels, rag, seeds, thresh, rag_copy, in_place_merge,
                         else:
                             src, dst = n2, n1
                         
-                      #  print("Merge Pixel ", src, " and ", dst)
+                        print("Merge Pixel ", src, " and ", dst)
                         merge_func(rag, src, dst)
                         new_id = rag.merge_nodes(src, dst, weight_func)
                         
-                      #  print("New seed id: ", new_id)
+                        print("New seed id: ", new_id)
     
                     
                 else:
-                    #print("----- Seed ", s, " can't grow anymore -----")
+                    print("----- Seed ", s, " can't grow anymore -----")
                     seedDict[s] = False
             
         if all(value == False for value in seedDict.values()):
