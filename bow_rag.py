@@ -13,7 +13,7 @@ from skimage.future import graph
 import statistics as stats
 import numpy as  np
 import copy
-
+from collections import namedtuple
 
 from bow_container import hist
 
@@ -21,45 +21,81 @@ from bow_container import hist
 
 class BOW_RAG(graph.RAG):
     
-    def __init__(self, seg_img, tex_img, color_image, tex_bins, color_bins, **attr):
+    config = namedtuple('AttributeConfig', ['img', 'func', 'kwargs'])
+    
+    def __init__(self, seg_img, **attr):
         
         #Call the RAG constructor
-        super().__init__(label_image=seg_img, connectivity=2, data=None, **attr)
-                
+        super().__init__(label_image=seg_img, connectivity=1, data=None, **attr)
+        
+        #Store seg_img as attribute
+        self.seg_img = seg_img
+        
+        self.attr_func_configs = {}
+                        
+        #Init edge weight statistics
+        self.edge_weight_stats = {}
+        
+
+        #Set indipendent node attributes
+        for n in self.__iter__():
+            #get color values for super pixel
+            label_mask = self.seg_img == n            
+
+            #Assign attributes to node
+            self.node[n].update({'labels': [n],
+                              'pixel_count': seg_img[label_mask].size})
+
+    
+    def calc_attr_value(self, *, data, func, **kwargs):
+            
+        #account for multi channels: one hist per channel
+        if len(data.shape) == 2:
+            result = [func(data[:,dim], **kwargs) for dim in range(data.shape[1])]
+        else:
+            result = func(data, **kwargs)
+            
+        return result
+        
+
+
+    def add_attribute(self, name, image, function, input_as, **func_kwargs):
+        
+        self.node_attr_funcs[name] = BOW_RAG.config(image, function, func_kwargs)
+        
         #Set node attributes
         for n in self.__iter__():
             #get color values for super pixel
-            label_mask = seg_img == n
-            masked_color = color_image[label_mask]
+            label_mask = self.seg_img == n
+            masked_image = image[label_mask]
             
-            #account for color channels: one hist per channel
-            if len(masked_color.shape) == 2:
-                color_hists = [hist(masked_color[:,dim], bins=color_bins) for dim in range(masked_color.shape[1])]
-            else:
-                color_hists = hist(masked_color, bins=color_bins)
+            attr_value = self.calc_attr_value(data=masked_image, func=function, **func_kwargs)
             
-            #Assign attributes to node
-            self.node[n].update({'labels': [n],
-                              'pixel_count': seg_img[label_mask].size,
-                              'tex': hist(set(tex_bins)),
-                              'color': color_hists})
+        #Assign attributes to node
+        self.node[n].update({name:attr_value})
+
+
+
+
     
-        #Populate the node attributes with data
-        for a, b in np.nditer([seg_img, tex_img]):                       
-            #BOW attribute individual bin incrementation
-            self.node[int(a)]['tex'].increment(int(b))
-            
+    def normalize_attribute(self, attribute, value=None):
         
-        #Normalize all histograms
         for n in self.__iter__():
-            self.node[n]['tex'].normalize(self.node[n]['pixel_count'])
-            for c_hist in self.node[n]['color']:
-                c_hist.normalize(self.node[n]['pixel_count'])
-        
-        
-        
-        #Init edge weight statistics
-        self.edge_weight_stats = {}
+            if isinstance(self.node[n][attribute], list):
+                for element in list:
+                    if isinstance(element, hist): element.normalize(self.node[n]['pixel_count'])
+                    else: element/value
+            
+            else:
+                if isinstance(self.node[n][attribute], hist): element.normalize(self.node[n]['pixel_count'])
+                else: self.node[n][attribute]/value
+               
+
+
+    
+    def delete_attributes(self, attribute):
+        for n in self.__iter__:
+            del self.node[attribute]
 
     
     def deepcopy_node(self, node):       
@@ -108,13 +144,14 @@ def _bow_merge_simple(graph, src, dst):
     #pixel counter
     graph.node[dst]['pixel_count'] += graph.node[src]['pixel_count']
     
-    #texture histogram
-    graph.node[dst]['tex'] += graph.node[src]['tex']
-    graph.node[dst]['tex'].normalize(graph.node[dst]['pixel_count'])
+    #get color values for super pixel
+    label_mask = (graph.seg_img == src) | (graph.seg_img == dst)
     
-    #color histograms
-    for ix, h_src in enumerate(graph.node[src]['color']):
-        graph.node[dst]['color'][ix] += h_src
-        graph.node[dst]['color'][ix].normalize(graph.node[dst]['pixel_count'])
-    
+    for attr, fconfig in graph.attr_func_configs.items():
+
+        masked_image = fconfig.data[label_mask]
+        
+        graph.node[dst][attr] = graph.calc_attr_value(data=masked_image, func=fconfig.func, **fconfig.kwargs)
+        
+        
     
