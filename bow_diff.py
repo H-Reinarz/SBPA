@@ -26,7 +26,8 @@ def _cumu_weight(graph, src, dst, n):
     return {'weight': cumu_diff(graph, dst, n)}
 
 
-def config_weighting(attr_dict={'tex': (Intersection, 1), 'color': (Intersection, 1) },mode='merge', result_label='weight'):
+def config_weighting(attr_dict={'tex': (Intersection, 1), 'color': (Intersection, 1) },mode='merge', result_label='weight'):    
+    
     def weight_func(graph, node1, node2, neighbor_node, *args, **kwargs):
         #Deep copies
         n1 = graph.deepcopy_node(node1)
@@ -46,8 +47,6 @@ def config_weighting(attr_dict={'tex': (Intersection, 1), 'color': (Intersection
                         result = func(n2[attr](), neighbor[attr]())
                         
                 par_results.append(result*factor)
-                
-                
         
         
         final_result = mean(par_results)
@@ -62,3 +61,14 @@ def config_weighting(attr_dict={'tex': (Intersection, 1), 'color': (Intersection
         
  
         return weight_func_minimal
+
+
+
+
+
+
+
+
+
+
+

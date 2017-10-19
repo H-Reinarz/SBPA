@@ -13,53 +13,106 @@ from skimage.future import graph
 import statistics as stats
 import numpy as  np
 import copy
-
+from collections import namedtuple
 
 from bow_container import hist
 
+from skimage.measure import regionprops
+
+from sklearn.cluster import KMeans
+ 
 #Subclass of RAG specified for BOW classification
 
 class BOW_RAG(graph.RAG):
     
-    def __init__(self, seg_img, tex_img, color_image, tex_bins, color_bins, **attr):
+    config = namedtuple('AttributeConfig', ['img', 'func', 'kwargs'])
+    
+    def __init__(self, seg_img, **attr):
         
         #Call the RAG constructor
-        super().__init__(label_image=seg_img, connectivity=2, data=None, **attr)
-                
+        super().__init__(label_image=seg_img, connectivity=1, data=None, **attr)
+        
+        #Store seg_img as attribute
+        self.seg_img = seg_img
+        
+        
+        #Node attribute reference information
+        self.attr_func_configs = {}
+        self.attr_norm_val = {}
+                        
+        #Init edge weight statistics
+        self.edge_weight_stats = {}
+        
+
+        #Set indipendent node attributes
+        for n in self.__iter__():
+            #get color values for super pixel
+            label_mask = self.seg_img == n            
+
+            #Assign attributes to node
+            self.node[n].update({'labels': [n],
+                              'pixel_count': seg_img[label_mask].size})
+
+    
+    def calc_attr_value(self, *, data, func, **kwargs):
+            
+        #account for multi channels: one hist per channel
+        if len(data.shape) == 2:
+            result = [func(data[:,dim], **kwargs) for dim in range(data.shape[1])]
+        else:
+            result = func(data, **kwargs)
+            
+        return result
+        
+
+
+    def add_attribute(self, name, image, function, **func_kwargs):
+        
+        self.attr_func_configs[name] = BOW_RAG.config(image, function, func_kwargs)
+        
         #Set node attributes
         for n in self.__iter__():
             #get color values for super pixel
-            label_mask = seg_img == n
-            masked_color = color_image[label_mask]
+            label_mask = self.seg_img == n
+            masked_image = image[label_mask]
             
-            #account for color channels: one hist per channel
-            if len(masked_color.shape) == 2:
-                color_hists = [hist(masked_color[:,dim], bins=color_bins) for dim in range(masked_color.shape[1])]
-            else:
-                color_hists = hist(masked_color, bins=color_bins)
+            attr_value = self.calc_attr_value(data=masked_image, func=function, **func_kwargs)
             
             #Assign attributes to node
-            self.node[n].update({'labels': [n],
-                              'pixel_count': seg_img[label_mask].size,
-                              'tex': hist(set(tex_bins)),
-                              'color': color_hists})
+            self.node[n].update({name:attr_value})
+
+
+    def add_regionprops(self):
+        
+        self.seg_img += 1
+        
+        for reg in regionprops(self.seg_img):
+            self.node[reg.label-1]["Y"] = round(reg.centroid[0]/self.seg_img.shape[0], 3)
+            self.node[reg.label-1]["X"] = round(reg.centroid[1]/self.seg_img.shape[1], 3)
+        
+        self.seg_img -= 1
     
-        #Populate the node attributes with data
-        for a, b in np.nditer([seg_img, tex_img]):                       
-            #BOW attribute individual bin incrementation
-            self.node[int(a)]['tex'].increment(int(b))
-            
+    
+    def normalize_attribute(self, attribute, value=None):
         
-        #Normalize all histograms
+        self.attr_norm_val[attribute] = value
+        
         for n in self.__iter__():
-            self.node[n]['tex'].normalize(self.node[n]['pixel_count'])
-            for c_hist in self.node[n]['color']:
-                c_hist.normalize(self.node[n]['pixel_count'])
-        
-        
-        
-        #Init edge weight statistics
-        self.edge_weight_stats = {}
+            if isinstance(self.node[n][attribute], list):
+                for ix, element in enumerate(self.node[n][attribute]):
+                    if isinstance(element, hist): element.normalize(self.node[n]['pixel_count'])
+                    else: self.node[n][attribute][ix] = element/value
+            
+            else:
+                if isinstance(self.node[n][attribute], hist): self.node[n][attribute].normalize(self.node[n]['pixel_count'])
+                else: self.node[n][attribute] /= value
+               
+
+
+    
+    def delete_attributes(self, attribute):
+        for n in self.__iter__():
+            del self.node[attribute]
 
     
     def deepcopy_node(self, node):       
@@ -100,7 +153,83 @@ class BOW_RAG(graph.RAG):
         else:
             return weight_list[index]
         
+     
+    def get_feature_space_array(self, attributes, hist_func=lambda x:x):
         
+        #remove duplicates
+        attrs = set(attributes)
+        
+        array_list = list()
+        
+        for n in self.__iter__():
+            
+            a_row = list()
+            
+            for a in attrs:
+                if isinstance(self.node[n][a], list):
+                    for element in self.node[n][a]:
+                        if isinstance(self.node[n][a], hist):
+                            a_row.append(hist_func(self.node[n][a]))
+                        else:
+                            a_row.append(element)
+                   
+                elif isinstance(self.node[n][a], hist):
+                    a_row.append(hist_func(self.node[n][a]))
+                else:
+                    a_row.append(self.node[n][a])
+            
+            array_list.append(a_row)
+        
+        
+        return np.array(array_list, dtype=np.float64)
+#        return array_list
+        
+        
+    
+    def kmeans_clustering(self, attr_name, attributes, k, hist_func=lambda x:x, **cluster_kwargs):
+        
+        cluster_obj = KMeans(k, **cluster_kwargs).fit(self.get_feature_space_array(attributes, hist_func))
+        
+        for node_ix, label in enumerate(cluster_obj.labels_):
+            self.node[node_ix][attr_name] = label
+        
+        
+    
+    def produce_cluster_image(self, attribute, dtype=np.int64):
+        
+        cluster_img = np.zeros_like(self.seg_img, dtype=dtype)
+        
+        for n in self.__iter__():            
+            for label in set(self.node[n]['labels']):
+                mask = self.seg_img == label
+                cluster_img[mask] = self.node[n][attribute]
+            
+        return cluster_img
+            
+            
+        
+        
+
+
+    @classmethod
+    def old_init(cls, seg_img, tex_img, color_image, tex_bins, color_bins, **attr):
+        
+        graph = cls(seg_img, **attr)
+        
+        graph.add_attribute('tex', tex_img, hist, vbins=tex_bins)
+        graph.normalize_attribute('tex')
+        
+        graph.add_attribute('color', color_image, hist, bins=color_bins)
+        graph.normalize_attribute('color')
+        
+        return graph
+    
+
+
+
+
+
+
         
 #Simple merging function
 def _bow_merge_simple(graph, src, dst):
@@ -108,13 +237,16 @@ def _bow_merge_simple(graph, src, dst):
     #pixel counter
     graph.node[dst]['pixel_count'] += graph.node[src]['pixel_count']
     
-    #texture histogram
-    graph.node[dst]['tex'] += graph.node[src]['tex']
-    graph.node[dst]['tex'].normalize(graph.node[dst]['pixel_count'])
+    #get color values for super pixel
+    label_mask = (graph.seg_img == src) | (graph.seg_img == dst)
     
-    #color histograms
-    for ix, h_src in enumerate(graph.node[src]['color']):
-        graph.node[dst]['color'][ix] += h_src
-        graph.node[dst]['color'][ix].normalize(graph.node[dst]['pixel_count'])
-    
-    
+    for attr, fconfig in graph.attr_func_configs.items():
+        
+        masked_image = fconfig.img[label_mask]
+        
+        graph.node[dst][attr] = graph.calc_attr_value(data=masked_image, func=fconfig.func, **fconfig.kwargs)
+        
+        #Normalize according to specs
+        if attr in graph.attr_norm_val:
+            graph.normalize_attribute(attr, graph.attr_norm_val[attr])
+        #else: raise KeyError(f"Attribute '{attr}' has no stored normalization value")
