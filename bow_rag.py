@@ -154,18 +154,27 @@ class BOW_RAG(graph.RAG):
             return weight_list[index]
         
      
-    def get_feature_space_array(self, attributes, hist_func=lambda x:x):
+    def get_feature_space_array(self, attr_config, hist_func=lambda x:x):
         
-        #remove duplicates
-        attrs = set(attributes)
-        
+        weight_list = list()
         array_list = list()
+        
+        for attr, weight in attr_config.items():
+            if isinstance(self.node[0][attr], list):
+                for element in self.node[0][attr]:
+                    weight_list.append(weight)
+            else:
+                weight_list.append(weight)
+        
+        
+        
+        
         
         for n in self.__iter__():
             
             a_row = list()
             
-            for a in attrs:
+            for a in attr_config.keys():
                 if isinstance(self.node[n][a], list):
                     for element in self.node[n][a]:
                         if isinstance(self.node[n][a], hist):
@@ -173,7 +182,7 @@ class BOW_RAG(graph.RAG):
                         else:
                             a_row.append(element)
                    
-                elif isinstance(self.node[n][a], hist):
+                elif isinstance(self.node[n][a], hist):                    
                     a_row.append(hist_func(self.node[n][a]))
                 else:
                     a_row.append(self.node[n][a])
@@ -181,7 +190,14 @@ class BOW_RAG(graph.RAG):
             array_list.append(a_row)
         
         
-        return np.array(array_list, dtype=np.float64)
+        mul_array = np.array(weight_list, dtype=np.float64)
+        
+        #print(list(mul_array))
+        
+        fs_array = np.array(array_list, dtype=np.float64)
+        fs_array *= mul_array
+
+        return fs_array
 #        return array_list
         
         
