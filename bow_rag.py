@@ -11,7 +11,7 @@ from skimage.future import graph
 #import networkx as nx
 #from itertools import repeat
 import statistics as stats
-import numpy as  np
+#import numpy as  np
 import copy
 from collections import namedtuple
 
@@ -31,7 +31,10 @@ class BOW_RAG(graph.RAG):
         #Store seg_img as attribute
         self.seg_img = seg_img
         
+        
+        #Node attribute reference information
         self.attr_func_configs = {}
+        self.attr_norm_val = {}
                         
         #Init edge weight statistics
         self.edge_weight_stats = {}
@@ -59,9 +62,9 @@ class BOW_RAG(graph.RAG):
         
 
 
-    def add_attribute(self, name, image, function, input_as, **func_kwargs):
+    def add_attribute(self, name, image, function, **func_kwargs):
         
-        self.node_attr_funcs[name] = BOW_RAG.config(image, function, func_kwargs)
+        self.attr_func_configs[name] = BOW_RAG.config(image, function, func_kwargs)
         
         #Set node attributes
         for n in self.__iter__():
@@ -71,8 +74,8 @@ class BOW_RAG(graph.RAG):
             
             attr_value = self.calc_attr_value(data=masked_image, func=function, **func_kwargs)
             
-        #Assign attributes to node
-        self.node[n].update({name:attr_value})
+            #Assign attributes to node
+            self.node[n].update({name:attr_value})
 
 
 
@@ -80,14 +83,16 @@ class BOW_RAG(graph.RAG):
     
     def normalize_attribute(self, attribute, value=None):
         
+        self.attr_norm_val[attribute] = value
+        
         for n in self.__iter__():
             if isinstance(self.node[n][attribute], list):
-                for element in list:
+                for element in self.node[n][attribute]:
                     if isinstance(element, hist): element.normalize(self.node[n]['pixel_count'])
                     else: element/value
             
             else:
-                if isinstance(self.node[n][attribute], hist): element.normalize(self.node[n]['pixel_count'])
+                if isinstance(self.node[n][attribute], hist): self.node[n][attribute].normalize(self.node[n]['pixel_count'])
                 else: self.node[n][attribute]/value
                
 
@@ -137,6 +142,27 @@ class BOW_RAG(graph.RAG):
             return weight_list[index]
         
         
+
+
+    @classmethod
+    def old_init(cls, seg_img, tex_img, color_image, tex_bins, color_bins, **attr):
+        
+        graph = cls(seg_img, **attr)
+        
+        graph.add_attribute('tex', tex_img, hist, vbins=tex_bins)
+        graph.normalize_attribute('tex')
+        
+        graph.add_attribute('color', color_image, hist, bins=color_bins)
+        graph.normalize_attribute('color')
+        
+        return graph
+    
+
+
+
+
+
+
         
 #Simple merging function
 def _bow_merge_simple(graph, src, dst):
@@ -148,10 +174,12 @@ def _bow_merge_simple(graph, src, dst):
     label_mask = (graph.seg_img == src) | (graph.seg_img == dst)
     
     for attr, fconfig in graph.attr_func_configs.items():
-
-        masked_image = fconfig.data[label_mask]
+        
+        masked_image = fconfig.img[label_mask]
         
         graph.node[dst][attr] = graph.calc_attr_value(data=masked_image, func=fconfig.func, **fconfig.kwargs)
         
-        
-    
+        #Normalize according to specs
+        if attr in graph.attr_norm_val:
+            graph.normalize_attribute(attr, graph.attr_norm_val[attr])
+        #else: raise KeyError(f"Attribute '{attr}' has no stored normalization value")

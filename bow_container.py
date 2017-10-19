@@ -27,8 +27,26 @@ class hist:
                 value = 0
                         
             self.container = np.array(list(repeat(value, len(bins))))
+
+
+
+        #Image and single value bins (i.e. LBP)
+        elif len(args) == 1 and isinstance(args[0], np.ndarray) and 'vbins' in kwargs:
+            self.keys = dict(zip(kwargs['vbins'], range(len(kwargs['vbins']))))
             
-            
+            if kwargs.__contains__("value"):
+                value = kwargs["value"]
+            else:
+                value = 0
+                        
+            self.container = np.array(list(repeat(value, len(kwargs['vbins']))))
+                  
+            for pix in np.nditer([args[0]]):                       
+                #individual bin incrementation
+                self.increment(int(pix))
+
+
+
         #dict
         elif len(args) == 1 and isinstance(args[0], dict):
             input_dict = args[0]
