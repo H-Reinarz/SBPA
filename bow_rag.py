@@ -11,12 +11,16 @@ from skimage.future import graph
 #import networkx as nx
 #from itertools import repeat
 import statistics as stats
-#import numpy as  np
+import numpy as  np
 import copy
 from collections import namedtuple
 
 from bow_container import hist
 
+from skimage.measure import regionprops
+
+from sklearn.cluster import KMeans
+ 
 #Subclass of RAG specified for BOW classification
 
 class BOW_RAG(graph.RAG):
@@ -78,8 +82,16 @@ class BOW_RAG(graph.RAG):
             self.node[n].update({name:attr_value})
 
 
-
-
+    def add_regionprops(self):
+        
+        self.seg_img += 1
+        
+        for reg in regionprops(self.seg_img):
+            self.node[reg.label-1]["Y"] = round(reg.centroid[0]/self.seg_img.shape[0], 3)
+            self.node[reg.label-1]["X"] = round(reg.centroid[1]/self.seg_img.shape[1], 3)
+        
+        self.seg_img -= 1
+    
     
     def normalize_attribute(self, attribute, value=None):
         
@@ -87,19 +99,19 @@ class BOW_RAG(graph.RAG):
         
         for n in self.__iter__():
             if isinstance(self.node[n][attribute], list):
-                for element in self.node[n][attribute]:
+                for ix, element in enumerate(self.node[n][attribute]):
                     if isinstance(element, hist): element.normalize(self.node[n]['pixel_count'])
-                    else: element/value
+                    else: self.node[n][attribute][ix] = element/value
             
             else:
                 if isinstance(self.node[n][attribute], hist): self.node[n][attribute].normalize(self.node[n]['pixel_count'])
-                else: self.node[n][attribute]/value
+                else: self.node[n][attribute] /= value
                
 
 
     
     def delete_attributes(self, attribute):
-        for n in self.__iter__:
+        for n in self.__iter__():
             del self.node[attribute]
 
     
@@ -140,6 +152,61 @@ class BOW_RAG(graph.RAG):
            return result
         else:
             return weight_list[index]
+        
+     
+    def get_feature_space_array(self, attributes, hist_func=lambda x:x):
+        
+        #remove duplicates
+        attrs = set(attributes)
+        
+        array_list = list()
+        
+        for n in self.__iter__():
+            
+            a_row = list()
+            
+            for a in attrs:
+                if isinstance(self.node[n][a], list):
+                    for element in self.node[n][a]:
+                        if isinstance(self.node[n][a], hist):
+                            a_row.append(hist_func(self.node[n][a]))
+                        else:
+                            a_row.append(element)
+                   
+                elif isinstance(self.node[n][a], hist):
+                    a_row.append(hist_func(self.node[n][a]))
+                else:
+                    a_row.append(self.node[n][a])
+            
+            array_list.append(a_row)
+        
+        
+        return np.array(array_list, dtype=np.float64)
+#        return array_list
+        
+        
+    
+    def kmeans_clustering(self, attr_name, attributes, k, hist_func=lambda x:x, **cluster_kwargs):
+        
+        cluster_obj = KMeans(k, **cluster_kwargs).fit(self.get_feature_space_array(attributes, hist_func))
+        
+        for node_ix, label in enumerate(cluster_obj.labels_):
+            self.node[node_ix][attr_name] = label
+        
+        
+    
+    def produce_cluster_image(self, attribute, dtype=np.int64):
+        
+        cluster_img = np.zeros_like(self.seg_img, dtype=dtype)
+        
+        for n in self.__iter__():            
+            for label in set(self.node[n]['labels']):
+                mask = self.seg_img == label
+                cluster_img[mask] = self.node[n][attribute]
+            
+        return cluster_img
+            
+            
         
         
 
