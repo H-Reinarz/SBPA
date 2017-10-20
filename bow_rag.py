@@ -19,7 +19,7 @@ from bow_container import hist
 
 from skimage.measure import regionprops
 
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, MeanShift
  
 #Subclass of RAG specified for BOW classification
 
@@ -168,8 +168,6 @@ class BOW_RAG(graph.RAG):
         
         
         
-        
-        
         for n in self.__iter__():
             
             a_row = list()
@@ -200,15 +198,46 @@ class BOW_RAG(graph.RAG):
         return fs_array
 #        return array_list
         
+
+
+
+    def hist_to_fs_array(self, name, value=1):
         
+        array_list = list()
+        
+        for n in self.__iter__():
+            if isinstance(self.node[n][name], hist):          
+                array_list.append(self.node[n][name](mode='array', normalized=True))
+            else:
+                raise TypeError(f"Attribute is of type {type(self.node[n][name])}. Must be hist!")
+
+        
+        fs_array = np.array(array_list, dtype=np.float64)
+  
+        fs_array *= value
+        
+        return fs_array
     
-    def kmeans_clustering(self, attr_name, attributes, k, hist_func=lambda x:x, **cluster_kwargs):
+    
+    
+    def kmeans_clustering(self, attr_name, fs_array, k, **cluster_kwargs):
         
-        cluster_obj = KMeans(k, **cluster_kwargs).fit(self.get_feature_space_array(attributes, hist_func))
+        cluster_obj = KMeans(k, **cluster_kwargs).fit(fs_array)
         
         for node_ix, label in enumerate(cluster_obj.labels_):
             self.node[node_ix][attr_name] = label
         
+
+
+    def mean_shift_clustering(self, attr_name, fs_array, **ms_kwargs):
+        
+        meanshift_obj = MeanShift(**ms_kwargs).fit(fs_array)
+        
+        for node_ix, label in enumerate(meanshift_obj.labels_):
+            self.node[node_ix][attr_name] = label
+
+
+
         
     
     def produce_cluster_image(self, attribute, dtype=np.int64):
