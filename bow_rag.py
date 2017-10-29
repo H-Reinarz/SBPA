@@ -8,7 +8,7 @@ Created on Mon Aug  7 14:25:44 2017
 
 #Imports
 import statistics as stats
-from collections import namedtuple
+from collections import namedtuple, Counter
 import copy
 #import networkx as nx
 #from itertools import repeat
@@ -16,11 +16,15 @@ import numpy as  np
 from bow_container import hist
 from skimage.future.graph import RAG
 from skimage.measure import regionprops
+<<<<<<< HEAD
 from sklearn.cluster import KMeans, MeanShift, DBSCAN
+=======
+import sklearn.cluster
+>>>>>>> 051db63cf8a506477b76c4438296d22445a607d4
 
 
 
-def calc_attr_value( *, array, func, **kwargs):
+def calc_attr_value(*, array, func, **kwargs):
     '''Helper function to apply a given function to
     a numpy array (i.e. an image) and return the result.
     If the array has multiple dimensions, a list of values is returned.'''
@@ -87,6 +91,18 @@ class BOW_RAG(RAG):
 
             #Assign attributes to node
             self.node[node].update({name:attr_value})
+
+
+
+    def add_attribute_from_lookup(self, new_attribute, attribute, lookup_dict):
+        '''Assign a new node attribute with values from the provided
+        look up dictionary corresponding to an existing attribute.'''
+
+        for node in self.__iter__():
+            key = self.node[node][attribute]
+            self.node[node].update({new_attribute: lookup_dict[key]})
+
+
 
 
     def add_regionprops(self):
@@ -247,15 +263,17 @@ class BOW_RAG(RAG):
 
 
 
-    def kmeans_clustering(self, attr_name, fs_array, k, **cluster_kwargs):
-        '''Perform the KMeans clustering from SKLearn on a geiven feature space array
+    def clustering(self, attr_name, algorithm, fs_array, **cluster_kwargs):
+        '''Perform any clustering operation from sklearn.cluster on a given feature space array
         (as returnd by 'get_feature_space_array()' or 'hist_to_fs_array()').
         Return the cluster label of each node as an attribute.'''
 
-        cluster_obj = KMeans(k, **cluster_kwargs).fit(fs_array)
+        cluster_class = getattr(sklearn.cluster, algorithm)
+        cluster_obj = cluster_class(**cluster_kwargs).fit(fs_array)
 
         for node_ix, label in enumerate(cluster_obj.labels_):
             self.node[node_ix][attr_name] = label
+<<<<<<< HEAD
 
 
 
@@ -279,6 +297,33 @@ class BOW_RAG(RAG):
         for node_ix, label in enumerate(dbscan_obj.labels_):
             self.node[node_ix][attr_name] = label
 
+=======
+        
+
+
+#    def kmeans_clustering(self, attr_name, fs_array, k, **cluster_kwargs):
+#        '''Perform the KMeans clustering from SKLearn on a geiven feature space array
+#        (as returnd by 'get_feature_space_array()' or 'hist_to_fs_array()').
+#        Return the cluster label of each node as an attribute.'''
+#
+#        cluster_obj = KMeans(k, **cluster_kwargs).fit(fs_array)
+#
+#        for node_ix, label in enumerate(cluster_obj.labels_):
+#            self.node[node_ix][attr_name] = label
+#
+#
+#
+#    def mean_shift_clustering(self, attr_name, fs_array, **ms_kwargs):
+#        '''Perform the MeanShift clustering from SKLearn on a geiven feature space array
+#        (as returnd by 'get_feature_space_array()' or 'hist_to_fs_array()').
+#        Return the cluster label of each node as an attribute.'''
+#
+#        meanshift_obj = MeanShift(**ms_kwargs).fit(fs_array)
+#
+#        for node_ix, label in enumerate(meanshift_obj.labels_):
+#            self.node[node_ix][attr_name] = label
+#
+>>>>>>> 051db63cf8a506477b76c4438296d22445a607d4
 
 
 
@@ -297,6 +342,15 @@ class BOW_RAG(RAG):
         return cluster_img
 
 
+    def neighbour_cross_tabulation(self, attribute):
+        '''Tabulate the joint distribution of cluster labels
+        for all adjacent nodes.'''
+
+        count = Counter()
+        for node1, node2, in self.edges():
+            combo = tuple(sorted([self.node[node1][attribute], self.node[node2][attribute]]))
+            count[combo] += 1
+        return count
 
 
 
