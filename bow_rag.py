@@ -275,28 +275,6 @@ class BOW_RAG(RAG):
             self.node[node_ix][attr_name] = label
 <<<<<<< HEAD
 
-
-
-    def mean_shift_clustering(self, attr_name, fs_array, **ms_kwargs):
-        '''Perform the MeanShift clustering from SKLearn on a geiven feature space array
-        (as returnd by 'get_feature_space_array()' or 'hist_to_fs_array()').
-        Return the cluster label of each node as an attribute.'''
-
-        meanshift_obj = MeanShift(**ms_kwargs).fit(fs_array)
-
-        for node_ix, label in enumerate(meanshift_obj.labels_):
-            self.node[node_ix][attr_name] = label
-            
-    def dbscan_clustering(self, attr_name, fs_array, eps, **db_kwargs):
-        '''Perform the MeanShift clustering from SKLearn on a geiven feature space array
-        (as returnd by 'get_feature_space_array()' or 'hist_to_fs_array()').
-        Return the cluster label of each node as an attribute.'''
-
-        dbscan_obj = DBSCAN(eps = eps, **db_kwargs).fit(fs_array)
-
-        for node_ix, label in enumerate(dbscan_obj.labels_):
-            self.node[node_ix][attr_name] = label
-
 =======
         
 
