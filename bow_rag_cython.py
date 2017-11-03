@@ -7,28 +7,16 @@ Created on Mon Aug  7 14:25:44 2017
 '''
 
 #Imports
-<<<<<<< HEAD
 import statistics as stats
 from collections import namedtuple, Counter
 import copy
 #import networkx as nx
-=======
-from skimage.future import graph
-import networkx as nx
-from numpy.lib.stride_tricks import as_strided
-from scipy import ndimage as ndi
-from graph import _add_edge_filter
->>>>>>> Jannik
 #from itertools import repeat
 import numpy as  np
 from bow_container import hist
 from skimage.future.graph import RAG
 from skimage.measure import regionprops
-<<<<<<< HEAD
-from sklearn.cluster import KMeans, MeanShift, DBSCAN
-=======
 import sklearn.cluster
->>>>>>> 051db63cf8a506477b76c4438296d22445a607d4
 
 
 
@@ -52,11 +40,6 @@ class BOW_RAG(RAG):
     '''Subclass of the 'region adjacency graph' (RAG) in skimage to accomodate for
     dynamic attribute assignment, neighbourhood weighting and node clustering.'''
 
-<<<<<<< HEAD
-=======
-class BOW_RAG(nx.Graph):
-    
->>>>>>> Jannik
     config = namedtuple('AttributeConfig', ['img', 'func', 'kwargs'])
 
     def __init__(self, seg_img, **attr):
@@ -64,13 +47,7 @@ class BOW_RAG(nx.Graph):
         with additional attributes.'''
 
         #Call the RAG constructor
-<<<<<<< HEAD
-        super().__init__(label_image=seg_img, connectivity=1, data=None, **attr)
-
-=======
-        #super().__init__(label_image=seg_img, connectivity=1, data=None, **attr)
-        
-        super(BOW_RAG, self).__init__(None, **attr)
+         super(BOW_RAG, self).__init__(None, **attr)
         if self.number_of_nodes() == 0:
             self.max_id = 0
         else:
@@ -99,8 +76,7 @@ class BOW_RAG(nx.Graph):
         for edge in edgeSet:
             if not self.has_edge(edge[0], edge[1]):
                 self.add_edge(edge[0], edge[1])
-            
->>>>>>> Jannik
+
         #Store seg_img as attribute
         self.seg_img = seg_img
 
@@ -321,9 +297,6 @@ class BOW_RAG(nx.Graph):
 
         for node_ix, label in enumerate(cluster_obj.labels_):
             self.node[node_ix][attr_name] = label
-<<<<<<< HEAD
-
-=======
         
 
 
@@ -349,7 +322,6 @@ class BOW_RAG(nx.Graph):
 #        for node_ix, label in enumerate(meanshift_obj.labels_):
 #            self.node[node_ix][attr_name] = label
 #
->>>>>>> 051db63cf8a506477b76c4438296d22445a607d4
 
 
 
