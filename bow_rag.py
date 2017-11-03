@@ -7,10 +7,18 @@ Created on Mon Aug  7 14:25:44 2017
 '''
 
 #Imports
+<<<<<<< HEAD
 import statistics as stats
 from collections import namedtuple, Counter
 import copy
 #import networkx as nx
+=======
+from skimage.future import graph
+import networkx as nx
+from numpy.lib.stride_tricks import as_strided
+from scipy import ndimage as ndi
+from graph import _add_edge_filter
+>>>>>>> Jannik
 #from itertools import repeat
 import numpy as  np
 from bow_container import hist
@@ -44,6 +52,11 @@ class BOW_RAG(RAG):
     '''Subclass of the 'region adjacency graph' (RAG) in skimage to accomodate for
     dynamic attribute assignment, neighbourhood weighting and node clustering.'''
 
+<<<<<<< HEAD
+=======
+class BOW_RAG(nx.Graph):
+    
+>>>>>>> Jannik
     config = namedtuple('AttributeConfig', ['img', 'func', 'kwargs'])
 
     def __init__(self, seg_img, **attr):
@@ -51,8 +64,43 @@ class BOW_RAG(RAG):
         with additional attributes.'''
 
         #Call the RAG constructor
+<<<<<<< HEAD
         super().__init__(label_image=seg_img, connectivity=1, data=None, **attr)
 
+=======
+        #super().__init__(label_image=seg_img, connectivity=1, data=None, **attr)
+        
+        super(BOW_RAG, self).__init__(None, **attr)
+        if self.number_of_nodes() == 0:
+            self.max_id = 0
+        else:
+            self.max_id = max(self.nodes())
+
+        if seg_img is not None:
+            fp = ndi.generate_binary_structure(seg_img.ndim, 1)
+            # In the next ``ndi.generic_filter`` function, the kwarg
+            # ``output`` is used to provide a strided array with a single
+            # 64-bit floating point number, to which the function repeatedly
+            # writes. This is done because even if we don't care about the
+            # output, without this, a float array of the same shape as the
+            # input image will be created and that could be expensive in
+            # memory consumption.
+            
+            edgeSet = set()
+            
+            ndi.generic_filter(
+                seg_img,
+                function=_add_edge_filter,
+                footprint=fp,
+                mode='nearest',
+                output=as_strided(np.empty((1,), dtype=np.float_),
+                                  shape=seg_img.shape,
+                                  strides=((0,) * seg_img.ndim)), extra_arguments=(edgeSet,))
+        for edge in edgeSet:
+            if not self.has_edge(edge[0], edge[1]):
+                self.add_edge(edge[0], edge[1])
+            
+>>>>>>> Jannik
         #Store seg_img as attribute
         self.seg_img = seg_img
 

@@ -15,11 +15,15 @@ def configuration(parent_package='', top_path=None):
 
     cython(['src/lbp_bins.pyx'], working_path=base_path)
     cython(['src/_lbp.pyx'], working_path=base_path)
+    cython(['src/_graph.pyx'], working_path=base_path)
 
     config.add_extension('lbp_bins', sources=['src/lbp_bins.c'],
-                         include_dirs=[get_numpy_include_dirs()])
+                         include_dirs=[get_numpy_include_dirs(), 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt', 'C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include', 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/shared'])
+						 #include_dirs=[get_numpy_include_dirs()])
     config.add_extension('_lbp', sources=['src/_lbp.c'],
-                         include_dirs=[get_numpy_include_dirs()])
+                         include_dirs=[get_numpy_include_dirs(), 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt', 'C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include', 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/shared'])
+    config.add_extension('_graph', sources=['src/_graph.c'],
+                         include_dirs=[get_numpy_include_dirs(), 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt', 'C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include', 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/shared'])
 
     return config
 
