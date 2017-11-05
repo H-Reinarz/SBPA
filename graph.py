@@ -26,7 +26,7 @@ def _add_edge_filter(values, edgeSet):
         can put it in the output array, but it is ignored by this filter.
     """
     
-    values = values.astype(int)
+    values = values.astype(int, copy = False)
     
     _graph._graphLabels(values, edgeSet)
     

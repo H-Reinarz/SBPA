@@ -12,12 +12,19 @@ from collections import namedtuple, Counter
 import copy
 #import networkx as nx
 #from itertools import repeat
+from skimage.future import graph
+import networkx as nx
+from numpy.lib.stride_tricks import as_strided
+from scipy import ndimage as ndi
+from graph import _add_edge_filter
 import numpy as  np
 from bow_container import hist
 from skimage.future.graph import RAG
 from skimage.measure import regionprops
 import sklearn.cluster
-
+import sys
+sys.path.append("H:/Geography/MASTERARBEIT/src/github/_LBP")
+import _graph
 
 
 def calc_attr_value(*, array, func, **kwargs):
@@ -36,18 +43,18 @@ def calc_attr_value(*, array, func, **kwargs):
 
 
 #Subclass of RAG specified for BOW classification
-class BOW_RAG(RAG):
+class BOW_RAG(nx.Graph):
     '''Subclass of the 'region adjacency graph' (RAG) in skimage to accomodate for
     dynamic attribute assignment, neighbourhood weighting and node clustering.'''
 
     config = namedtuple('AttributeConfig', ['img', 'func', 'kwargs'])
 
     def __init__(self, seg_img, **attr):
-        '''BOW_RAG is initialized with the parents initializer along
-        with additional attributes.'''
-
+        
         #Call the RAG constructor
-         super(BOW_RAG, self).__init__(None, **attr)
+        #super().__init__(label_image=seg_img, connectivity=1, data=None, **attr)
+        
+        super(BOW_RAG, self).__init__(None, **attr)
         if self.number_of_nodes() == 0:
             self.max_id = 0
         else:
@@ -65,14 +72,17 @@ class BOW_RAG(RAG):
             
             edgeSet = set()
             
+            #seg_img = seg_img.astype(int, copy = False)
+            
             ndi.generic_filter(
                 seg_img,
-                function=_add_edge_filter,
+                function=_graph._graphLabels,
                 footprint=fp,
                 mode='nearest',
                 output=as_strided(np.empty((1,), dtype=np.float_),
                                   shape=seg_img.shape,
                                   strides=((0,) * seg_img.ndim)), extra_arguments=(edgeSet,))
+        print(len(edgeSet))
         for edge in edgeSet:
             if not self.has_edge(edge[0], edge[1]):
                 self.add_edge(edge[0], edge[1])

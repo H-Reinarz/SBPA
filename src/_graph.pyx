@@ -27,16 +27,16 @@ ctypedef fused any_int:
     cnp.int32_t
     cnp.int64_t
     
-def _graphLabels(int[:] values, theSet):
+def _graphLabels(double[:] values, theSet):
     #returnSet = set()
     cdef Py_ssize_t i = len(values) // 2
-    cdef int center = values[i]
+    cdef double center = values[i]
     
     for value in values:
         if value != center:
             theSet.add((center, value))
     
-    #return returnSet
+    return 0
             
     
     
