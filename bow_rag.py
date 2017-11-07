@@ -268,7 +268,7 @@ class BOW_RAG(RAG):
             nodes = self.filter_by_attribute(div_attr, label)
             fs_result = self.basic_feature_space_array(attr_config, label, nodes, exclude)
 
-        return_list.append(fs_result)
+            return_list.append(fs_result)
 
         return return_list
 
@@ -276,24 +276,41 @@ class BOW_RAG(RAG):
 
 
 
-    def hist_to_fs_array(self, name, value=1):
+    def hist_to_fs_array(self, attr_config, subset=(), label=''):
         '''Arange a attribute that is itself a histogram into an array that contains
         one row per node. It serves as data points in feature space for clustering operations.'''
 
+
+        if subset is None:
+            subset = set(self.__iter__())
+
         array_list = list()
+        order_list = list()
 
         for node in self.__iter__():
-            if isinstance(self.node[node][name], hist):
-                array_list.append(self.node[node][name](mode='array', normalized=True))
-            else:
-                raise TypeError("Attribute is of type {type(self.node[node][name])}. Must be hist!")
+            if node in subset:
+                row_array = np.array([], dtype=np.float64)
+                for attr, factor in attr_config.items():
+                    if isinstance(self.node[node][attr], list):
+                        for histogramm in attr:
+                            if not isinstance(histogramm, hist):
+                                raise TypeError(f'Wrong type: {type(histogramm)} Must be "hist"!')
+                            part = histogramm(mode='array', normalized=True)
+                            part *= factor
+                            row_array = np.append(row_array, part)
+                    elif isinstance(attr, hist):
+                        part = self.node[node][attr](mode='array', normalized=True)
+                        part *= factor
+                        row_array = np.append(row_array, part)
+                    else:
+                        raise TypeError(f'Wrong type: {type(histogramm)} Must be "hist"!')
 
+                array_list.append(row_array)
+                order_list.append(node)
 
         fs_array = np.array(array_list, dtype=np.float64)
 
-        fs_array *= value
-
-        return fs_array
+        return BOW_RAG.fs_spec(fs_array, tuple(order_list), label)
 
 
 
@@ -302,15 +319,26 @@ class BOW_RAG(RAG):
         (as returnd by 'get_feature_space_array()' or 'hist_to_fs_array()').
         Return the cluster label of each node as an attribute.'''
 
-        cluster_class = getattr(sklearn.cluster, algorithm)
-        cluster_obj = cluster_class(**cluster_kwargs).fit(fs_spec.array)
-
         for node in self.__iter__():
             self.node[node][attr_name] = None
 
-        for node, label in zip(fs_spec.order, cluster_obj.labels_):
-            self.node[node][attr_name] = str(fs_spec.label) + str(label)
+        cluster_class = getattr(sklearn.cluster, algorithm)
 
+        if isinstance(fs_spec, BOW_RAG.fs_spec):
+            cluster_obj = cluster_class(**cluster_kwargs).fit(fs_spec.array)       
+            for node, label in zip(fs_spec.order, cluster_obj.labels_):
+                #print(node, label)
+                self.node[node][attr_name] = str(fs_spec.label) + str(label)
+        
+        elif isinstance(fs_spec, list):    
+            for fs in fs_spec:
+                if not isinstance(fs, BOW_RAG.fs_spec):
+                    raise TypeError("Must be BOW_RAG.fs_spec!")
+
+                cluster_obj = cluster_class(**cluster_kwargs).fit(fs.array)       
+                for node, label in zip(fs.order, cluster_obj.labels_):
+                    self.node[node][attr_name] = str(fs.label) + str(label)
+    
 
 
 #    def kmeans_clustering(self, attr_name, fs_array, k, **cluster_kwargs):
@@ -318,7 +346,7 @@ class BOW_RAG(RAG):
 #        (as returnd by 'get_feature_space_array()' or 'hist_to_fs_array()').
 #        Return the cluster label of each node as an attribute.'''
 #
-#        cluster_obj = KMeans(k, **cluster_kwargs).fit(fs_array)
+#        cluster_obj = sklearn.cluster.KMeans(k, **cluster_kwargs).fit(fs_array)
 #
 #        for node_ix, label in enumerate(cluster_obj.labels_):
 #            self.node[node_ix][attr_name] = label
@@ -345,6 +373,8 @@ class BOW_RAG(RAG):
 
         attr_labels = {self.node[node][attribute] for node in self.__iter__()}
         label_dict = dict(zip(attr_labels, range(len(attr_labels))))
+        
+        print(label_dict)
 
         cluster_img = np.zeros_like(self.seg_img, dtype=dtype)
 
