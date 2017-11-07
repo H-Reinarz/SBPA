@@ -292,7 +292,7 @@ class BOW_RAG(RAG):
                 row_array = np.array([], dtype=np.float64)
                 for attr, factor in attr_config.items():
                     if isinstance(self.node[node][attr], list):
-                        for histogramm in attr:
+                        for histogramm in self.node[node][attr]:
                             if not isinstance(histogramm, hist):
                                 raise TypeError(f'Wrong type: {type(histogramm)} Must be "hist"!')
                             part = histogramm(mode='array', normalized=True)
