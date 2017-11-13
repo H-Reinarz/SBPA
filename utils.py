@@ -4,7 +4,7 @@ Created on Thu Nov  9 23:19:31 2017
 
 @author: Jannik
 """
-import nunmpy as np
+import numpy as np
 
 def RemoveChannels(image, channelsToRemove):
     return np.delete(image, np.array(channelsToRemove),2)
@@ -15,9 +15,13 @@ def KeepChannels(image, channelsToKeep):
     return np.delete(image, np.array(channelsToRemove),2)
 
 def NormalizeImage(image):
-    for ix in range(image.shape[2]):
-        image[:,:,ix] += np.min(image[:,:,ix])
-        image[:,:,ix] /= np.max(image[:,:,ix])
+    if image.ndim == 2:
+        image[:,:] += np.min(image[:,:])
+        image[:,:] /= np.max(image[:,:])
+    elif image.ndim > 2:
+        for ix in range(image.shape[2]):
+            image[:,:,ix] += np.min(image[:,:,ix])
+            image[:,:,ix] /= np.max(image[:,:,ix])
     return image
 
 def MergeCHannels(listOfChannels):
@@ -25,6 +29,13 @@ def MergeCHannels(listOfChannels):
     return zipped
 
 def AddValue(image, value):
-    for i in range(image.shape[2]):
-        image[:,:,i] + value
+    image += value
+    return image
+
+def ZerosToOne(image, value):
+    image[image == 0] += value
+    return image
+
+def HighestValueMinusOne(image, value=1):
+    image[image == 255] -= value
     return image
