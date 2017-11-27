@@ -6,12 +6,18 @@ Created on Wed Sep 13 12:22:51 2017
 @author: hre070
 """
 
-from math import pi
+from math import pi, sqrt
 
 from scipy.spatial.distance import euclidean
 from matplotlib import pyplot as plt
 import numpy as np
 from numpy import fft
+from skimage import draw
+from skimage.filters import gaussian
+#from skimage.restoration import estimate_sigma
+from skimage.measure import find_contours
+from skimage.measure import EllipseModel
+from matplotlib.patches import Ellipse
 
 def create_radius_map(shape, array_dtype=np.float32):
     '''Create an array where the value of a cell is its distance to the centroid
@@ -126,8 +132,100 @@ class FrequencySetup:
 
     def result(self):
         '''Return the input image after applying the lowpass filter
-        in the frquency domain.'''
+        in the frequency domain.'''
         return np.abs(fft.ifft2(fft.ifftshift(self.filtered_dft)))
+
+
+
+
+
+class DFTanalyzer:
+    '''Class to provide the 2D-DFT (shifted) of an image
+    and a derived ellipse model representing the the frequencies
+    of interest. Based on that model, several parameters
+    for image analysis are provided.'''
+
+    def __init__(self, image):
+        self.dft = fft.fftshift(fft.fft2(image))
+        
+        self.contour = None
+        self.ellipse = None
+        self.wavelength = None
+        self.texture_radius = None
+        self.min_patch_size = None
+        self.low_pass = None
+        self.filtered_img = None
+
+    @property
+    def abs_log_dft(self):
+        '''Return log-transformed DFT.'''
+        return np.abs(np.log(self.dft))
+
+    def fit_model(self, cut_percent, gauss_sigma):
+        '''Fit an ellipse model to a contour of a certain
+        value in the filtered DFT.'''
+        #Fit ellipse model
+        al_dft = self.abs_log_dft
+
+        gauss_dft = gaussian(al_dft, gauss_sigma)
+
+        contour_value = gauss_dft.min()+((gauss_dft.max() - gauss_dft.min())*cut_percent/100)
+        contours = find_contours(gauss_dft, contour_value)
+
+        assert len(contours) == 1
+
+        self.contour = contours[0]
+
+        self.ellipse = EllipseModel()
+
+        self.ellipse.estimate(self.contour[:, ::-1])
+
+        center = tuple([x/2 for x in self.dft.shape])
+
+        offset = euclidean(center, (self.ellipse.params[1], self.ellipse.params[0]))
+
+        half_diagonal = sqrt(sum((x**2 for x in self.dft.shape)))/2
+
+        assert (offset/half_diagonal) <= 0.03
+
+        #derive wavelength and texture parameters
+        xy_points = self.ellipse.predict_xy(np.linspace(0, 2*np.pi, 4*self.ellipse.params[0]))
+
+        max_x = round(xy_points[:, 0].max())
+        min_y = round(xy_points[:, 1].min())
+
+        wavelength_x = self.dft.shape[1]/(max_x - center[1])
+
+        wavelength_y = self.dft.shape[0]/(center[0] - min_y)
+
+        self.wavelength = round((wavelength_x + wavelength_y)/2)
+
+        self.texture_radius = round(self.wavelength/2)
+
+        self.min_patch_size = round(self.texture_radius**2 * pi)
+
+
+
+
+
+    def apply_lowpass(self, upper, lower, gauss_sigma=1):
+        '''Filter unwanted high frequencies based on the
+        ellipse model.'''
+        cx, cy, a, b, theta = self.ellipse.params
+
+        self.low_pass = np.zeros_like(self.dft, dtype=np.float64) + lower
+        rr, cc = draw.ellipse(cy, cx, b, a, self.low_pass.shape, (theta*-1))
+        self.low_pass[rr, cc] = upper
+
+        self.low_pass = gaussian(self.low_pass, gauss_sigma)
+
+        filtered_dft = self.dft * self.low_pass
+
+        self.filtered_img = np.abs(fft.ifft2(fft.ifftshift(filtered_dft)))
+
+
+
+
 
 #======================================================================================
 
@@ -136,7 +234,6 @@ if __name__ == "__main__":
 
     from skimage import io
     from skimage.color import rgb2gray
-    from skimage.filters import gaussian
 #    from numpy.fft import *
 
     image = io.imread("/home/hre070/MA/DJI_0095_CLIP.jpg")
