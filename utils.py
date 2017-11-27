@@ -14,17 +14,19 @@ def KeepChannels(image, channelsToKeep):
     channelsToRemove = [c for c in channels if c not in channelsToKeep]
     return np.delete(image, np.array(channelsToRemove),2)
 
-def NormalizeImage(image):
+def NormalizeImage(image, deepcopy=True):
+    if deepcopy:
+        image = np.copy(image)
     if image.ndim == 2:
-        image[:,:] += np.min(image[:,:])
+        image[:,:] += abs(np.min(image[:,:]))
         image[:,:] /= np.max(image[:,:])
     elif image.ndim > 2:
         for ix in range(image.shape[2]):
-            image[:,:,ix] += np.min(image[:,:,ix])
+            image[:,:,ix] += abs(np.min(image[:,:,ix]))
             image[:,:,ix] /= np.max(image[:,:,ix])
     return image
 
-def MergeCHannels(listOfChannels):
+def MergeChannels(listOfChannels):
     zipped = np.dstack(listOfChannels)
     return zipped
 
@@ -39,3 +41,6 @@ def ZerosToOne(image, value):
 def HighestValueMinusOne(image, value=1):
     image[image == 255] -= value
     return image
+
+def ImageFromArray(array, image):
+    return np.reshape(array, (image.shape[0], image.shape[1]))
