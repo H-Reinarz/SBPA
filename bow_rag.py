@@ -10,7 +10,7 @@ Created on Mon Aug  7 14:25:44 2017
 import statistics as stats
 from collections import namedtuple, Counter
 import copy
-#import networkx as nx
+import networkx as nx
 #from itertools import repeat
 import numpy as  np
 from bow_container import hist
@@ -97,6 +97,34 @@ class BOW_RAG(RAG):
 
             #Assign attributes to node
             self.node[node].update({name:attr_value})
+
+
+    def subgraph(self, nbunch):
+        """Return the subgraph induced on nodes in nbunch.
+
+        The induced subgraph of the graph contains the nodes in nbunch
+        and the edges between those nodes.
+        """
+        bunch = self.nbunch_iter(nbunch)
+        # create new graph and copy subgraph into it
+        H = nx.Graph()
+        # copy node and attribute dictionaries
+        for n in bunch:
+            H.node[n] = self.node[n]
+        # namespace shortcuts for speed
+        H_adj = H.adj
+        self_adj = self.adj
+        # add nodes and edges (undirected method)
+        for n in H.node:
+            Hnbrs = H.adjlist_dict_factory()
+            H_adj[n] = Hnbrs
+            for nbr, d in self_adj[n].items():
+                if nbr in H_adj:
+                    # add both representations of edge: n-nbr and nbr-n
+                    Hnbrs[nbr] = d
+                    H_adj[nbr][n] = d
+        H.graph = self.graph
+        return H
 
 
 
