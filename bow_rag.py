@@ -104,6 +104,7 @@ class BOW_RAG(RAG):
 
         The induced subgraph of the graph contains the nodes in nbunch
         and the edges between those nodes.
+        Implemented in bow_rag to overwrite method of the base class
         """
         bunch = self.nbunch_iter(nbunch)
         # create new graph and copy subgraph into it
@@ -274,7 +275,6 @@ class BOW_RAG(RAG):
 
             array_list.append(a_row)
             order_list.append(node)
-
         fs_array = np.array(array_list, dtype=np.float64)
         fs_array *= mul_array
 
@@ -293,7 +293,7 @@ class BOW_RAG(RAG):
         div_attr_labels = {self.node[node][div_attr] for node in self.__iter__()}
 
         for label in div_attr_labels:
-            nodes = self.filter_by_attribute(div_attr, label)
+            nodes = self.filter_by_attribute(div_attr, {label})
             fs_result = self.basic_feature_space_array(attr_config, label, nodes, exclude)
 
             return_list.append(fs_result)
