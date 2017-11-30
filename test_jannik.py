@@ -45,6 +45,7 @@ def AgglCluster(g, attr_name, fs_spec, n_clusters=2, pixel_min=-1, superpixel_mi
         g.clustering(attr_name, 'AgglomerativeClustering', fs_spec, n_clusters=n_clusters, linkage="ward", connectivity=connectivity)
     
     elif isinstance(fs_spec, list):
+        print("New Cascade Step")
         for node in g.__iter__():
                 g.node[node][attr_name] = None
         for fs in fs_spec:
@@ -52,6 +53,7 @@ def AgglCluster(g, attr_name, fs_spec, n_clusters=2, pixel_min=-1, superpixel_mi
                 raise TypeError("Must be BOW_RAG.fs_spec!")
             
             if len(fs[1]) < superpixel_min:
+                #print("Cluster too small")
                 g.node[fs[1][0]][attr_name] = str(fs.label)# + str(3)
                 continue
             
@@ -63,10 +65,11 @@ def AgglCluster(g, attr_name, fs_spec, n_clusters=2, pixel_min=-1, superpixel_mi
                 for n in subset:
                     pixel_count += subset.node[n]['pixel_count']
                 if pixel_count <= pixel_min:
+                    #print("In FS ", fs.label, " are ", pixel_count, " Pixel. It gets Name ", fs.label)
                     for n in subset:
                         g.node[n][attr_name] = str(fs.label)# + str(4)
                     continue
-
+            
             connectivity = nx.adjacency_matrix(subset, weight=None)
                         
             cluster_obj = AgglomerativeClustering(n_clusters=n_clusters, linkage='ward',
@@ -78,17 +81,17 @@ def AgglCluster(g, attr_name, fs_spec, n_clusters=2, pixel_min=-1, superpixel_mi
 def AgglCluster_Cascade(g, fs_attr, attr_name, n_cascade=2, automatic=False, pixel_min=-1):
     runs = 0
     cascade = True
-    fs1 = g.basic_feature_space_array(fs_attrs)
+    fs1 = g.basic_feature_space_array(fs_attr)
     
     if not automatic:
         for run in range(0, n_cascade):
             AgglCluster(g, attr_name+str(run), fs1, 2, pixel_min)        
-            fs1 = g.attribute_divided_fs_arrays(fs_attrs, attr_name+str(run))
+            fs1 = g.attribute_divided_fs_arrays(fs_attr, attr_name+str(run))
         runs = n_cascade
     else:
         while cascade:            
             AgglCluster(g, attr_name+str(runs), fs1, 2, pixel_min)        
-            fs1 = g.attribute_divided_fs_arrays(fs_attrs, attr_name+str(runs))
+            fs1 = g.attribute_divided_fs_arrays(fs_attr, attr_name+str(runs))
             if runs > 0:
                 for n in g:
                     if g.node[n][attr_name+str(runs-1)] != g.node[n][attr_name+str(runs)]:
@@ -96,14 +99,13 @@ def AgglCluster_Cascade(g, fs_attr, attr_name, n_cascade=2, automatic=False, pix
                         break
                     else:
                         cascade = False
-
             runs += 1
-    print(runs)
     return runs            
             
 
 ####################################
-image = io.imread("D:/janni/Documents/Geographie/Masterarbeit/Data/ra_neu/ra2_small_gauss.jpg")
+image = io.imread("D:/janni/Documents/Geographie/Masterarbeit/Data/ra_neu/ra2_small.jpg")
+#image = io.imread("D:/janni/Dropbox/devils_kitchen/resized/2017_0705_113912_520_clip.jpg")
 #image = io.imread("D:/janni/Documents/Geographie/Masterarbeit/Data/ResearchArea/RA1/orthoClipRA1_badRes.jpg")
 height = io.imread("D:/janni/Documents/Geographie/Masterarbeit/Data/ResearchArea/RA1/dsmRA1_test16_resampled.png")
 
@@ -144,12 +146,12 @@ dim1Inverted = 1-dim1
 
 comp1 = u.MergeChannels([dim1Inverted,vvi,tgi])
 
-segments_slic = slic(image, n_segments=400, compactness=10, sigma=1)
+segments_slic = slic(image, n_segments=600, compactness=13, sigma=1)
 #segments_slic = quickshift(image, kernel_size=12, max_dist=24, ratio=0.5)
 print('SLIC number of segments: {}'.format(len(np.unique(segments_slic))))
 f, ax = plt.subplots(figsize=(10, 10))
 
-ax.imshow(mark_boundaries(comp1, segments_slic))
+ax.imshow(mark_boundaries(image, segments_slic))
 
 im_gray = rgb2gray(image)
 # settings for LBP
@@ -181,13 +183,12 @@ n_clusters = 2  # number of regions
 nr = AgglCluster_Cascade(Graph, fs_attrs, "cluster", automatic = True, pixel_min =  60000)
 
 #
-#AgglCluster(Graph, "cluster1", fs1, 2)
+#AgglCluster(Graph, "cluster1", fs1, 3)
 ##Graph.clustering('clusterbla', 'AgglomerativeClustering', fs1, n_clusters=40, linkage="ward", connectivity=connectivity)
 #fs2 = Graph.attribute_divided_fs_arrays(fs_attrs, 'cluster1')
 #
 #AgglCluster(Graph, "cluster2", fs2, 2, 60000)
-#Graph2 = Graph.copy()
-#print(Graph2 == Graph)
+#
 #fs3 = Graph.attribute_divided_fs_arrays(fs_attrs, 'cluster2')
 #AgglCluster(Graph, "cluster3", fs3, 2, 60000)
 #
@@ -207,12 +208,14 @@ nr = AgglCluster_Cascade(Graph, fs_attrs, "cluster", automatic = True, pixel_min
 #AgglCluster(Graph, "cluster8", fs8, 2, 60000)
 
 
-cluster_img = Graph.produce_cluster_image('cluster'+str(nr-1))
+#Graph.clustering("k", 'KMeans', fs1, n_clusters=3)
 
 from skimage import color
-
+cluster_img = Graph.produce_cluster_image('cluster'+str(nr-1))
 out = color.label2rgb(cluster_img, image, kind='avg')
 out = segmentation.mark_boundaries(out, cluster_img, (0, 0, 0))
+f, ax = plt.subplots(figsize=(15, 15))
+ax.imshow(mark_boundaries(image, cluster_img));
 
 from visual import plot_node_attribute
 f, ax = plt.subplots(figsize=(18, 18))
@@ -220,7 +223,7 @@ f, ax = plt.subplots(figsize=(18, 18))
 ax.imshow(image)
 ax.imshow(out, alpha = .4)
 ax.imshow(cluster_img, cmap=plt.cm.spectral, alpha=.2)
-plot_node_attribute(ax, Graph, 'labels', 24)
+#plot_node_attribute(ax, Graph, 'labels', 12)
 
 
 f, ax = plt.subplots(figsize=(15, 15))
