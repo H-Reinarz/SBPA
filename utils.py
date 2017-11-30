@@ -44,3 +44,20 @@ def HighestValueMinusOne(image, value=1):
 
 def ImageFromArray(array, image):
     return np.reshape(array, (image.shape[0], image.shape[1]))
+
+def CountPixel(g, attr_name, pixel_min=0, invert=False):
+    clusterSet = set() # unique cluster set
+    for node in g:
+        clusterSet.add(g.node[node][attr_name]) # create unique cluster set
+    clusterDict = {c: 0 for c in clusterSet} # cluster set to cluster dict
+    for key, value in clusterDict.items():
+        for n in g:
+            if g.node[n][attr_name] == key:
+                clusterDict[key] += g.node[n]['pixel_count']
+    
+    if not invert:
+        clusterDict = {k: v for k, v in clusterDict.items() if v >= pixel_min}
+    else:
+        clusterDict = {k: v for k, v in clusterDict.items() if v < pixel_min}
+    return clusterDict
+    
