@@ -5,14 +5,12 @@ Created on Thu Nov  9 22:30:53 2017
 @author: Jannik
 """
 
+import utils as u
 import numpy as np
-from enum import Enum
-
-class C(Enum):
-    Red = 0
-    Green = 1
-    Blue = 2
-    
+from skimage.util import img_as_float
+import copy
+import pandas as pd
+from sklearn.decomposition import PCA
 R = 0
 G = 1
 B = 2
@@ -60,3 +58,47 @@ def TGI(image):
 # Normalized green red difference index
 def NGRDI(image):
     return ((image[:,:,G] - image[:,:,R]) / (image[:,:,G] + image[:,:,R]))
+
+def MakeRgbIndices(img, normalize = True, zeros = 1):
+    if img.dtype == "float64":
+        raise TypeError("Image has to be unsigned integer for creating RGB Indices!")
+    
+    image = np.copy(img)
+    image = u.ZerosToOne(image, zeros)
+    image = img_as_float(image)    
+    
+    rgbiDict = {"gli":GLI(image),
+                "vvi" : VVI(image),
+                "ntdi" : NDTI(image),
+                "ci" : CI(image),
+                "bi" : BI(image),
+                "si" : SI(image),
+                "tgi" : TGI(image),
+                "ngrdi" : NGRDI(image)}
+    
+    if normalize:
+        for key, value in rgbiDict.items():
+            rgbiDict[key] = u.NormalizeImage(rgbiDict[key])
+    
+    rgbi = type("rgbi", (), rgbiDict)
+    p = rgbi()
+    return p, rgbiDict
+
+def MakePCA(di, image, components = 3):
+    d = copy.deepcopy(di)
+    
+    for key, value in d.items():
+        d[key] = d[key].flatten()
+    df = pd.DataFrame(d)
+    
+    pca = PCA(n_components=components).fit(df)
+    pca_reduced = pca.transform(df)
+    
+    dimDict = {}
+    
+    for i in range(0,components):
+        dimDict["dim"+str(i+1)] = u.NormalizeImage(u.ImageFromArray(pca_reduced[:,i], image))
+    
+    comp = type("components", (), dimDict)
+    p = comp()
+    return p, dimDict
