@@ -29,6 +29,8 @@ def AgglCluster(g, attr_name, fs_spec, n_clusters=2, pixel_min=-1, superpixel_mi
             
             subset = g.subgraph(nbunch=list(fs[1]))
             
+            
+            # OLD
             pixel_count = 0
             
             if pixel_min >= 0:
@@ -40,10 +42,33 @@ def AgglCluster(g, attr_name, fs_spec, n_clusters=2, pixel_min=-1, superpixel_mi
                         g.node[n][attr_name] = str(fs.label)# + str(4)
                     continue
             
+            
             connectivity = nx.adjacency_matrix(subset, weight=None)
-                        
+            
             cluster_obj = AgglomerativeClustering(n_clusters=n_clusters, linkage='ward',
-                               connectivity=connectivity).fit(fs.array)       
+                   connectivity=connectivity).fit(fs.array)  
+            
+            
+            # NEW
+#            noGrow = False
+#    
+#            if pixel_min >= 0:
+#                clusterDict = {}
+#                for label in cluster_obj.labels_:
+#                    clusterDict[label] = 0
+#                for node, label in zip(fs.order, cluster_obj.labels_):
+#                    clusterDict[label] += subset.node[node]['pixel_count']
+#                print(clusterDict)
+#                for key, value in clusterDict.items():
+#                    if clusterDict[key] <= pixel_min:
+#                        for n in subset:
+#                            g.node[n][attr_name] = str(fs.label)
+#                        noGrow = True
+#                        break
+#            
+#            if noGrow:
+#                continue
+                             
             for node, label in zip(fs.order, cluster_obj.labels_):
                 g.node[node][attr_name] = str(fs.label) + str(label)
 
