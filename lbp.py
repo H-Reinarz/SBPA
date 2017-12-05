@@ -15,8 +15,11 @@ import sys
 sys.path.append("H:/Geography/MASTERARBEIT/src/github/_LBP")
 
 import _lbp
+import _nilbp
+import _lbp_rad
+import _lbp_ang
 
-def local_binary_pattern(image, textureMap, P, R, method='default', nilbp = True):
+def local_binary_pattern(image, textureMap, P, R, method='default', nilbp = False):
     """Gray scale and rotation invariant LBP (Local Binary Patterns).
 
     LBP is an invariant descriptor that can be used for texture classification.
@@ -84,4 +87,62 @@ def local_binary_pattern(image, textureMap, P, R, method='default', nilbp = True
     image = np.ascontiguousarray(image, dtype=np.double)
     textureMap = np.ascontiguousarray(image, dtype=np.double)
     output = _lbp._local_binary_pattern(image, textureMap, P, R, methods[method.lower()], nilbp)
+    return output
+
+
+def ni_lbp(image, P, R, method='default'):
+    """Neighbour Intensity LBP"""
+    
+    
+    assert_nD(image, 2)
+
+    methods = {
+        'default': ord('D'),
+        'ror': ord('R'),
+        'uniform': ord('U'),
+        'nri_uniform': ord('N'),
+        'var': ord('V'),
+    }
+    
+        
+    image = np.ascontiguousarray(image, dtype=np.double)
+    output = _nilbp.__ni_lbp(image, textureMap, P, R, methods[method.lower()])
+    return output
+
+
+def radial_lbp(image, P, R_OUT, R_IN, method='default'):
+    """Radial Difference LBP"""
+    
+    assert_nD(image, 2)
+
+
+    methods = {
+        'default': ord('D'),
+        'ror': ord('R'),
+        'uniform': ord('U'),
+        'nri_uniform': ord('N'),
+        'var': ord('V'),
+    }
+            
+    image = np.ascontiguousarray(image, dtype=np.double)
+    output = _lbp_rad._radial_lbp(image, textureMap, P, R_OUT, R_IN, methods[method.lower()])
+    return output
+
+
+def angular_lbp(image, P, R, method='default'):
+    """Angular Difference LBP"""
+    
+    assert_nD(image, 2)
+
+
+    methods = {
+        'default': ord('D'),
+        'ror': ord('R'),
+        'uniform': ord('U'),
+        'nri_uniform': ord('N'),
+        'var': ord('V'),
+    }
+            
+    image = np.ascontiguousarray(image, dtype=np.double)
+    output = _lbp_ang._angular_lbp(image, textureMap, P, R, methods[method.lower()])
     return output

@@ -42,7 +42,7 @@ cdef inline int _bit_rotate_right(int value, int length) nogil:
     return (value >> 1) | ((value & 1) << (length - 1))
     
 def _local_binary_pattern(double[:, ::1] image, double[:, ::1] textureMap,
-                          int P, float R, char method='D', int nilbp = 1):
+                          int P, float R, char method='D', int nilbp = 0):
     """Gray scale and rotation invariant LBP (Local Binary Patterns).
 
     LBP is an invariant descriptor that can be used for texture classification.
