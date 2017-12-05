@@ -55,21 +55,42 @@ for fs in fs1:
     
     pixel_count = 0
     
-    if 357913 >= 0:
-        for n in subset:
-            pixel_count += subset.node[n]['pixel_count']
-        if pixel_count <= 357913:
-            #print("In FS ", fs.label, " are ", pixel_count, " Pixel. It gets Name ", fs.label)
-            for n in subset:
-                Graph.node[n]["run1"] = str(fs.label)
-            continue
+#    if 357913 >= 0:
+#        for n in subset:
+#            pixel_count += subset.node[n]['pixel_count']
+#        if pixel_count <= 357913:
+#            #print("In FS ", fs.label, " are ", pixel_count, " Pixel. It gets Name ", fs.label)
+#            for n in subset:
+#                Graph.node[n]["run1"] = str(fs.label)
+#            continue
 #    
     connectivity = nx.adjacency_matrix(subset, weight=None)
                 
     cluster_obj = AgglomerativeClustering(n_clusters=n_clusters, linkage='ward',
-                       connectivity=connectivity).fit(fs.array)       
+                       connectivity=connectivity).fit(fs.array)
+    noGrow = False
+    
+    if 1 == 1:
+        clusterDict = {}
+        for label in cluster_obj.labels_:
+            clusterDict[label] = 0
+        for node, label in zip(fs.order, cluster_obj.labels_):
+            clusterDict[label] += subset.node[node]['pixel_count']
+        print(clusterDict)
+        for key, value in clusterDict.items():
+            if clusterDict[key] <= 62000:
+                for n in subset:
+                    Graph.node[n]["run1"] = str(fs.label)
+                noGrow = True
+                break
+    
+    if noGrow:
+        continue
+    
+    print("bob")   
     for node, label in zip(fs.order, cluster_obj.labels_):
         Graph.node[node]["run1"] = str(fs.label) + str(label)
+    
         
 #Cluster2
 fs2 = Graph.attribute_divided_fs_arrays(fs_attrs, 'run1')
@@ -95,7 +116,11 @@ for fs in fs2:
     connectivity = nx.adjacency_matrix(subset, weight=None)
                 
     cluster_obj = AgglomerativeClustering(n_clusters=n_clusters, linkage='ward',
-                       connectivity=connectivity).fit(fs.array)       
+                       connectivity=connectivity).fit(fs.array)
+
+
+    
+       
     for node, label in zip(fs.order, cluster_obj.labels_):
         Graph.node[node]["run2"] = str(fs.label) + str(label)
 #################
