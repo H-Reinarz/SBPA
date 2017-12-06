@@ -10,7 +10,7 @@ import bow_rag
 from sklearn.cluster import AgglomerativeClustering
 
 
-def AgglCluster(g, attr_name, fs_spec, n_clusters=2, pixel_min=-1, superpixel_min=2, ):
+def AgglCluster(g, attr_name, fs_spec, n_clusters=2, pixel_min=-1, superpixel_min=2, original_variance = None, limit_percent=30):
     if isinstance(fs_spec, bow_rag.BOW_RAG.fs_spec):
         connectivity = nx.adjacency_matrix(g, weight=None)
         g.clustering(attr_name, 'AgglomerativeClustering', fs_spec, n_clusters=n_clusters, linkage="ward", connectivity=connectivity)
@@ -22,9 +22,9 @@ def AgglCluster(g, attr_name, fs_spec, n_clusters=2, pixel_min=-1, superpixel_mi
             if not isinstance(fs, bow_rag.BOW_RAG.fs_spec):
                 raise TypeError("Must be BOW_RAG.fs_spec!")
             
-            if len(fs[1]) < superpixel_min:
-                #print("Cluster too small")
-                g.node[fs[1][0]][attr_name] = str(fs.label)# + str(3)
+            if len(fs.order) < superpixel_min:
+                for n in fs.order:
+                        g.node[n][attr_name] = str(fs.label)
                 continue
             
             subset = g.subgraph(nbunch=list(fs[1]))
@@ -42,6 +42,11 @@ def AgglCluster(g, attr_name, fs_spec, n_clusters=2, pixel_min=-1, superpixel_mi
                         g.node[n][attr_name] = str(fs.label)# + str(4)
                     continue
             
+            if original_variance is not None:
+                if Cmp_Variance(fs, original_variance, limit_percent):
+                    for n in subset:
+                        g.node[n][attr_name] = str(fs.label)
+                    continue
             
             connectivity = nx.adjacency_matrix(subset, weight=None)
             
@@ -73,19 +78,23 @@ def AgglCluster(g, attr_name, fs_spec, n_clusters=2, pixel_min=-1, superpixel_mi
                 g.node[node][attr_name] = str(fs.label) + str(label)
 
 
-def AgglCluster_Cascade(g, fs_attr, attr_name, n_cascade=2, automatic=False, pixel_min=-1):
+def AgglCluster_Cascade(g, fs_attr, attr_name, n_cascade=2, automatic=False, pixel_min=-1, superpixel_min= 2, variance = True, limit_percent=30):
     runs = 0
     cascade = True
     fs1 = g.basic_feature_space_array(fs_attr)
+    if variance:
+        original_variance = Fs_Variance(fs1)
+    else:
+        original_variance = None
     
     if not automatic:
         for run in range(0, n_cascade):
-            AgglCluster(g, attr_name+str(run), fs1, 2, pixel_min)        
+            AgglCluster(g, attr_name+str(run), fs1, 2, pixel_min, superpixel_min, original_variance, limit_percent)        
             fs1 = g.attribute_divided_fs_arrays(fs_attr, attr_name+str(run))
         runs = n_cascade
     else:
         while cascade:            
-            AgglCluster(g, attr_name+str(runs), fs1, 2, pixel_min)        
+            AgglCluster(g, attr_name+str(runs), fs1, 2, pixel_min, superpixel_min, original_variance, limit_percent)        
             fs1 = g.attribute_divided_fs_arrays(fs_attr, attr_name+str(runs))
             if runs > 0:
                 for n in g:
@@ -96,3 +105,33 @@ def AgglCluster_Cascade(g, fs_attr, attr_name, n_cascade=2, automatic=False, pix
                         cascade = False
             runs += 1
     return runs
+
+
+def Fs_Variance(fs):
+    ''' Computes variance for complete feature_space. Variance of every
+    feature divided by number of features. '''
+    
+    if not isinstance(fs, bow_rag.BOW_RAG.fs_spec):
+        raise TypeError("Must be BOW_RAG.fs_spec!")
+    
+    variance = 0
+    
+    for dim in range(0,fs.array.shape[1]):
+        variance += fs.array[:,dim].var()
+    
+    variance /= fs.array.shape[1]
+    
+    return variance
+
+def Cmp_Variance(fs, original_var, limit_percent):
+    ''' Checks if feature_space variance has reached limit_percent of original
+    variance value. If <= original variance function returns True. Else False.
+    Example: Is 213 (fs) 30 percent or less (limit_percent) than 250 
+    (original_var)? Result: False'''
+    
+    current_var = Fs_Variance(fs)
+    current_percent = (current_var / original_var) * 100
+    if current_percent <= limit_percent:
+        return True
+    else:
+        return False

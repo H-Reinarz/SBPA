@@ -39,69 +39,71 @@ import bow_diff
 import pandas as pd
 from sklearn.decomposition import PCA
 
-def AgglCluster(g, attr_name, fs_spec, n_clusters=2, pixel_min=-1, superpixel_min=2, ):
-    if isinstance(fs_spec, bow_rag.BOW_RAG.fs_spec):
-        connectivity = nx.adjacency_matrix(g, weight=None)
-        g.clustering(attr_name, 'AgglomerativeClustering', fs_spec, n_clusters=n_clusters, linkage="ward", connectivity=connectivity)
-    
-    elif isinstance(fs_spec, list):
-        print("New Cascade Step")
-        for node in g.__iter__():
-                g.node[node][attr_name] = None
-        for fs in fs_spec:
-            if not isinstance(fs, bow_rag.BOW_RAG.fs_spec):
-                raise TypeError("Must be BOW_RAG.fs_spec!")
-            
-            if len(fs[1]) < superpixel_min:
-                #print("Cluster too small")
-                g.node[fs[1][0]][attr_name] = str(fs.label)# + str(3)
-                continue
-            
-            subset = g.subgraph(nbunch=list(fs[1]))
-            
-            pixel_count = 0
-            
-            if pixel_min >= 0:
-                for n in subset:
-                    pixel_count += subset.node[n]['pixel_count']
-                if pixel_count <= pixel_min:
-                    #print("In FS ", fs.label, " are ", pixel_count, " Pixel. It gets Name ", fs.label)
-                    for n in subset:
-                        g.node[n][attr_name] = str(fs.label)# + str(4)
-                    continue
-            
-            connectivity = nx.adjacency_matrix(subset, weight=None)
-                        
-            cluster_obj = AgglomerativeClustering(n_clusters=n_clusters, linkage='ward',
-                               connectivity=connectivity).fit(fs.array)       
-            for node, label in zip(fs.order, cluster_obj.labels_):
-                g.node[node][attr_name] = str(fs.label) + str(label)
+import agglomerativ_clustering as ac
 
-
-def AgglCluster_Cascade(g, fs_attr, attr_name, n_cascade=2, automatic=False, pixel_min=-1):
-    runs = 0
-    cascade = True
-    fs1 = g.basic_feature_space_array(fs_attr)
-    
-    if not automatic:
-        for run in range(0, n_cascade):
-            AgglCluster(g, attr_name+str(run), fs1, 2, pixel_min)        
-            fs1 = g.attribute_divided_fs_arrays(fs_attr, attr_name+str(run))
-        runs = n_cascade
-    else:
-        while cascade:            
-            AgglCluster(g, attr_name+str(runs), fs1, 2, pixel_min)        
-            fs1 = g.attribute_divided_fs_arrays(fs_attr, attr_name+str(runs))
-            if runs > 0:
-                for n in g:
-                    if g.node[n][attr_name+str(runs-1)] != g.node[n][attr_name+str(runs)]:
-                        cascade = True
-                        break
-                    else:
-                        cascade = False
-            runs += 1
-    return runs            
-            
+#def AgglCluster(g, attr_name, fs_spec, n_clusters=2, pixel_min=-1, superpixel_min=2, ):
+#    if isinstance(fs_spec, bow_rag.BOW_RAG.fs_spec):
+#        connectivity = nx.adjacency_matrix(g, weight=None)
+#        g.clustering(attr_name, 'AgglomerativeClustering', fs_spec, n_clusters=n_clusters, linkage="ward", connectivity=connectivity)
+#    
+#    elif isinstance(fs_spec, list):
+#        print("New Cascade Step")
+#        for node in g.__iter__():
+#                g.node[node][attr_name] = None
+#        for fs in fs_spec:
+#            if not isinstance(fs, bow_rag.BOW_RAG.fs_spec):
+#                raise TypeError("Must be BOW_RAG.fs_spec!")
+#            
+#            if len(fs[1]) < superpixel_min:
+#                #print("Cluster too small")
+#                g.node[fs[1][0]][attr_name] = str(fs.label)# + str(3)
+#                continue
+#            
+#            subset = g.subgraph(nbunch=list(fs[1]))
+#            
+#            pixel_count = 0
+#            
+#            if pixel_min >= 0:
+#                for n in subset:
+#                    pixel_count += subset.node[n]['pixel_count']
+#                if pixel_count <= pixel_min:
+#                    #print("In FS ", fs.label, " are ", pixel_count, " Pixel. It gets Name ", fs.label)
+#                    for n in subset:
+#                        g.node[n][attr_name] = str(fs.label)# + str(4)
+#                    continue
+#            
+#            connectivity = nx.adjacency_matrix(subset, weight=None)
+#                        
+#            cluster_obj = AgglomerativeClustering(n_clusters=n_clusters, linkage='ward',
+#                               connectivity=connectivity).fit(fs.array)       
+#            for node, label in zip(fs.order, cluster_obj.labels_):
+#                g.node[node][attr_name] = str(fs.label) + str(label)
+#
+#
+#def AgglCluster_Cascade(g, fs_attr, attr_name, n_cascade=2, automatic=False, pixel_min=-1):
+#    runs = 0
+#    cascade = True
+#    fs1 = g.basic_feature_space_array(fs_attr)
+#    
+#    if not automatic:
+#        for run in range(0, n_cascade):
+#            AgglCluster(g, attr_name+str(run), fs1, 2, pixel_min)        
+#            fs1 = g.attribute_divided_fs_arrays(fs_attr, attr_name+str(run))
+#        runs = n_cascade
+#    else:
+#        while cascade:            
+#            AgglCluster(g, attr_name+str(runs), fs1, 2, pixel_min)        
+#            fs1 = g.attribute_divided_fs_arrays(fs_attr, attr_name+str(runs))
+#            if runs > 0:
+#                for n in g:
+#                    if g.node[n][attr_name+str(runs-1)] != g.node[n][attr_name+str(runs)]:
+#                        cascade = True
+#                        break
+#                    else:
+#                        cascade = False
+#            runs += 1
+#    return runs            
+#            
 
 ####################################
 image = io.imread("D:/janni/Documents/Geographie/Masterarbeit/Data/ra_neu/ra2_small.jpg")
@@ -146,7 +148,7 @@ dim1Inverted = 1-dim1
 
 comp1 = u.MergeChannels([dim1Inverted,vvi,tgi])
 
-segments_slic = slic(image, n_segments=600, compactness=13, sigma=1)
+segments_slic = slic(image, n_segments=1300, compactness=20, sigma=3)
 #segments_slic = quickshift(image, kernel_size=12, max_dist=24, ratio=0.5)
 print('SLIC number of segments: {}'.format(len(np.unique(segments_slic))))
 f, ax = plt.subplots(figsize=(10, 10))
@@ -167,11 +169,13 @@ imageLab = rgb2lab(image)
 
 Graph = bow_rag.BOW_RAG(segments_slic)
 print(nx.info(Graph))
-Graph.add_attribute('color', imageLab, np.mean)
-Graph.normalize_attribute('color', value=255)
-Graph.add_attribute('var', im_gray, np.var)
+Graph.add_attribute('color', u.NormalizeImage(imageLab), np.mean)
+#Graph.normalize_attribute('color', value=255)
+Graph.add_attribute('var', u.NormalizeImage(im_gray), np.var)
+Graph.add_attribute("pc1", dim1Inverted, np.mean)
+Graph.add_attribute("pc1var", dim1Inverted, np.var)
 
-fs_attrs = {'color':1, 'var':.5}
+fs_attrs = {'color':1, 'var':.2, 'pc1': 1, 'pc1var': .2}
 fs1 = Graph.basic_feature_space_array(fs_attrs)
 
 
@@ -180,7 +184,7 @@ connectivity = nx.adjacency_matrix(Graph, weight=None)
 
 n_clusters = 2  # number of regions
 
-nr = AgglCluster_Cascade(Graph, fs_attrs, "cluster", automatic = True, pixel_min =  60000)
+nr = ac.AgglCluster_Cascade(Graph, fs_attrs, "cluster", automatic = True, pixel_min =  60000, superpixel_min = 2, variance=True, limit_percent=8)
 
 #
 #AgglCluster(Graph, "cluster1", fs1, 3)
