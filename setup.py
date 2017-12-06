@@ -27,11 +27,11 @@ def configuration(parent_package='', top_path=None):
                          include_dirs=[get_numpy_include_dirs(), 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt', 'C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include', 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/shared'])
     config.add_extension('_graph', sources=['src/_graph.c'],
                          include_dirs=[get_numpy_include_dirs(), 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt', 'C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include', 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/shared'])
-    config.add_extension('_graph', sources=['src/_lbp_ang.c'],
+    config.add_extension('_lbp_ang', sources=['src/_lbp_ang.c'],
                          include_dirs=[get_numpy_include_dirs(), 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt', 'C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include', 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/shared'])
-    config.add_extension('_graph', sources=['src/_lbp_rad.c'],
+    config.add_extension('_lbp_rad', sources=['src/_lbp_rad.c'],
                          include_dirs=[get_numpy_include_dirs(), 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt', 'C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include', 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/shared'])
-    config.add_extension('_graph', sources=['src/_nilbp.c'],
+    config.add_extension('_nilbp', sources=['src/_nilbp.c'],
                          include_dirs=[get_numpy_include_dirs(), 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt', 'C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include', 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/shared'])
 
     return config
