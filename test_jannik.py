@@ -15,7 +15,7 @@ import rgb_indices as rgb
 import utils as u
 import numpy as np
 from skimage.util import img_as_float
-from skimage.segmentation import slic
+from skimage.segmentation import slic, felzenszwalb
 from skimage.segmentation import quickshift
 from skimage.segmentation import mark_boundaries
 
@@ -149,6 +149,7 @@ dim1Inverted = 1-dim1
 comp1 = u.MergeChannels([dim1Inverted,vvi,tgi])
 
 segments_slic = slic(image, n_segments=1300, compactness=20, sigma=3)
+#segments_slic = felzenszwalb(image, scale=70, sigma=4, min_size=2500)
 #segments_slic = quickshift(image, kernel_size=12, max_dist=24, ratio=0.5)
 print('SLIC number of segments: {}'.format(len(np.unique(segments_slic))))
 f, ax = plt.subplots(figsize=(10, 10))
@@ -184,7 +185,7 @@ connectivity = nx.adjacency_matrix(Graph, weight=None)
 
 n_clusters = 2  # number of regions
 
-nr = ac.AgglCluster_Cascade(Graph, fs_attrs, "cluster", automatic = True, pixel_min =  60000, superpixel_min = 2, variance=True, limit_percent=8)
+nr = ac.AgglCluster_Cascade(Graph, fs_attrs, "cluster", automatic = False, pixel_min =  60000, superpixel_min = 2, variance=True, limit_percent=8)
 
 #
 #AgglCluster(Graph, "cluster1", fs1, 3)
