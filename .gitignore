@@ -1,6 +1,9 @@
 /LBP_BINS
+/_LBP
 /build
 /__pycache__
+setup.py
+cleanup
 *.md5
 *.c
 *.pyc
