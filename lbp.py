@@ -12,7 +12,7 @@ Methods to characterize image textures.
 import numpy as np
 from skimage._shared.utils import assert_nD
 import sys
-sys.path.append("H:/Geography/MASTERARBEIT/src/github/_LBP")
+sys.path.append("./_LBP")
 
 import _lbp
 import _nilbp
@@ -106,7 +106,7 @@ def ni_lbp(image, P, R, method='default'):
     
         
     image = np.ascontiguousarray(image, dtype=np.double)
-    output = _nilbp.__ni_lbp(image, textureMap, P, R, methods[method.lower()])
+    output = _nilbp._ni_lbp(image, P, R, methods[method.lower()])
     return output
 
 
@@ -125,7 +125,7 @@ def radial_lbp(image, P, R_OUT, R_IN, method='default'):
     }
             
     image = np.ascontiguousarray(image, dtype=np.double)
-    output = _lbp_rad._radial_lbp(image, textureMap, P, R_OUT, R_IN, methods[method.lower()])
+    output = _lbp_rad._radial_lbp(image, P, R_OUT, R_IN, methods[method.lower()])
     return output
 
 
@@ -144,5 +144,5 @@ def angular_lbp(image, P, R, method='default'):
     }
             
     image = np.ascontiguousarray(image, dtype=np.double)
-    output = _lbp_ang._angular_lbp(image, textureMap, P, R, methods[method.lower()])
+    output = _lbp_ang._angular_lbp(image, P, R, methods[method.lower()])
     return output

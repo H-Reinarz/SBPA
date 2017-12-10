@@ -41,7 +41,7 @@ cdef inline int _bit_rotate_right(int value, int length) nogil:
     """
     return (value >> 1) | ((value & 1) << (length - 1))
     
-def _ni_lbp(double[:, ::1] image, double[:, ::1] textureMap,
+def _ni_lbp(double[:, ::1] image,
                           int P, float R, char method='D'):
     """Gray scale and rotation invariant LBP (Local Binary Patterns).
 
