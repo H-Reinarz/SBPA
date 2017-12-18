@@ -185,7 +185,7 @@ connectivity = nx.adjacency_matrix(Graph, weight=None)
 
 n_clusters = 2  # number of regions
 
-nr = ac.AgglCluster_Cascade(Graph, fs_attrs, "cluster", automatic = False, pixel_min =  60000, superpixel_min = 2, variance=True, limit_percent=8)
+nr = ac.AgglCluster_Cascade(Graph, fs_attrs, "cluster", automatic = True, pixel_min =  60000, superpixel_min = 2, variance=True, limit_percent=8)
 
 #
 #AgglCluster(Graph, "cluster1", fs1, 3)
