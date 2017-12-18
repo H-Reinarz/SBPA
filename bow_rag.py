@@ -409,15 +409,14 @@ class BOW_RAG(RAG):
 
         
         for node in self.__iter__():
-            for affinity in self.node[node][attr_name]:
+            for ix, affinity in enumerate(self.node[node][attr_name]):
                 affinity -= min_dist
                 affinity /= stretch_denom
 
-                if limit is not None and affinity > limit:
-                    affinity *= centralize
-
                 affinity *= stretch[1] - stretch[0]
                 affinity += stretch[0]
+                self.node[node][attr_name][ix] = affinity 
+                
                 
 
 #    def kmeans_clustering(self, attr_name, fs_array, k, **cluster_kwargs):
