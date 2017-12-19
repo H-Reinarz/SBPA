@@ -304,7 +304,7 @@ class BOW_RAG(RAG):
 
 
 
-    def hist_to_fs_array(self, attr_config, subset=(), label=''):
+    def hist_to_fs_array(self, attr_config, subset=None, label=''):
         '''Arange a attribute that is itself a histogram into an array that contains
         one row per node. It serves as data points in feature space for clustering operations.'''
 
@@ -326,12 +326,12 @@ class BOW_RAG(RAG):
                             part = histogramm(mode='array', normalized=True)
                             part *= factor
                             row_array = np.append(row_array, part)
-                    elif isinstance(attr, hist):
+                    elif isinstance(self.node[node][attr], hist):
                         part = self.node[node][attr](mode='array', normalized=True)
                         part *= factor
                         row_array = np.append(row_array, part)
                     else:
-                        raise TypeError(f'Wrong type: {type(histogramm)} Must be "hist"!')
+                        raise TypeError(f'Wrong type: {type(self.node[node][attr])} Must be "hist"!')
 
                 array_list.append(row_array)
                 order_list.append(node)
@@ -342,7 +342,7 @@ class BOW_RAG(RAG):
 
 
 
-    def clustering(self, attr_name, algorithm, fs_spec, **cluster_kwargs):
+    def clustering(self, attr_name, algorithm, fs_spec, return_clust_obj=False, **cluster_kwargs):
         '''Perform any clustering operation from sklearn.cluster on a given feature space array
         (as returnd by 'get_feature_space_array()' or 'hist_to_fs_array()').
         Return the cluster label of each node as an attribute.'''
@@ -353,21 +353,71 @@ class BOW_RAG(RAG):
         cluster_class = getattr(sklearn.cluster, algorithm)
 
         if isinstance(fs_spec, BOW_RAG.fs_spec):
-            cluster_obj = cluster_class(**cluster_kwargs).fit(fs_spec.array)       
+            cluster_obj = cluster_class(**cluster_kwargs)
+            cluster_obj.fit(fs_spec.array)
             for node, label in zip(fs_spec.order, cluster_obj.labels_):
                 #print(node, label)
                 self.node[node][attr_name] = str(fs_spec.label) + str(label)
-        
-        elif isinstance(fs_spec, list):    
+
+        elif isinstance(fs_spec, list):
             for fs in fs_spec:
                 if not isinstance(fs, BOW_RAG.fs_spec):
                     raise TypeError("Must be BOW_RAG.fs_spec!")
 
-                cluster_obj = cluster_class(**cluster_kwargs).fit(fs.array)       
+                cluster_obj = cluster_class(**cluster_kwargs).fit(fs.array)
                 for node, label in zip(fs.order, cluster_obj.labels_):
                     self.node[node][attr_name] = str(fs.label) + str(label)
-    
 
+        if return_clust_obj:
+            return cluster_obj
+
+
+    def cluster_affinity_attrs(self, attr_name, algorithm, fs_spec, stretch=None, limit=None, centralize=1, **cluster_kwargs):
+        '''Perform a clustering operation using the clustering() method and store the affinity of the node to each cluster
+        (the distance to each )'''
+
+        if stretch is None:
+            stretch = (0, 1)
+        elif len(stretch) != 2:
+            raise ValueError("stretch must contain the two values min and max")
+        elif not isinstance(stretch, tuple):
+            raise TypeError("stretch must be tuple")
+
+        cluster_obj = self.clustering(attr_name, algorithm, fs_spec, return_clust_obj=True, **cluster_kwargs)
+
+        n_clusters = cluster_obj.cluster_centers_.shape[0]
+
+
+        distances = []
+        for row, node in enumerate(fs_spec.order):
+
+            self.node[node][attr_name] = []
+
+            node_vector = fs_spec.array[row]
+
+            for cluster in range(n_clusters):
+                center_vector = cluster_obj.cluster_centers_[cluster, :]
+
+                distance = np.linalg.norm(center_vector - node_vector)
+                distances.append(distance)
+
+                self.node[node][attr_name].append(distance)
+
+        min_dist = min(distances)
+        stretch_denom = max(distances) - min_dist
+
+
+        
+        for node in self.__iter__():
+            for ix, affinity in enumerate(self.node[node][attr_name]):
+                affinity -= min_dist
+                affinity /= stretch_denom
+
+                affinity *= stretch[1] - stretch[0]
+                affinity += stretch[0]
+                self.node[node][attr_name][ix] = affinity 
+                
+                
 
 #    def kmeans_clustering(self, attr_name, fs_array, k, **cluster_kwargs):
 #        '''Perform the KMeans clustering from SKLearn on a geiven feature space array
@@ -401,7 +451,7 @@ class BOW_RAG(RAG):
 
         attr_labels = {self.node[node][attribute] for node in self.__iter__()}
         label_dict = dict(zip(attr_labels, range(len(attr_labels))))
-        
+
         print(label_dict)
 
         cluster_img = np.zeros_like(self.seg_img, dtype=dtype)
