@@ -4,8 +4,13 @@ Created on Sat Nov  4 10:38:45 2017
 
 @author: Jannik
 """
+import bow_rag
+
 def SingleFeature(rag, fs, layer_in, layer_out = None):
-    ''' Transforms multifeature clusters to single feature clusters'''
+    ''' Transforms multifeature clusters to single feature clusters on the graph'''
+    
+    if isinstance(fs, bow_rag.BOW_RAG.fs_spec):
+        fs = [fs]
     
     if layer_out is None:
         layer_out = layer_in
@@ -23,17 +28,17 @@ def SingleFeature(rag, fs, layer_in, layer_out = None):
     
 
 def Isolate(rag, node, clusters, processed, attr_name_in, attr_name_out):
-    
     # Node is processed and gets new cluster ID
     processed.add(node)
-    
-    
+        
     # Do the same for all neighbors with the same previous cluster
     for neighbour in rag.neighbors_iter(node):
         if (rag.node[node][attr_name_in] == rag.node[neighbour][attr_name_in]) and neighbour not in processed:
             Isolate(rag, neighbour, clusters, processed, attr_name_in, attr_name_out)   
     
     rag.node[node][attr_name_out] = rag.node[node][attr_name_in] + str(clusters)
+
+
 
 def Absorb(rag, size, attr_name_in, attr_name_out = "cluster_new"):
     

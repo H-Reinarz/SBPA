@@ -5,6 +5,7 @@ Created on Thu Nov  9 23:19:31 2017
 @author: Jannik
 """
 import numpy as np
+import bow_rag
 
 def RemoveChannels(image, channelsToRemove):
     return np.delete(image, np.array(channelsToRemove),2)
@@ -45,16 +46,15 @@ def HighestValueMinusOne(image, value=1):
 def ImageFromArray(array, image):
     return np.reshape(array, (image.shape[0], image.shape[1]))
 
-def CountPixel(g, attr_name, pixel_min=0, invert=False):
-    clusterSet = set() # unique cluster set
-    for node in g:
-        clusterSet.add(g.node[node][attr_name]) # create unique cluster set
-    clusterDict = {c: 0 for c in clusterSet} # cluster set to cluster dict
-    for key, value in clusterDict.items():
-        for n in g:
-            if g.node[n][attr_name] == key:
-                clusterDict[key] += g.node[n]['pixel_count']
-    
+def CountPixel(g, fs, pixel_min=0, invert=False):
+    if isinstance(fs, bow_rag.BOW_RAG.fs_spec):
+        fs = [fs]
+    clusterDict = {} # unique cluster set
+    for _fs in fs:
+        clusterDict[_fs.label] = 0
+        for nodes in _fs.order:
+            clusterDict[_fs.label] += g.node[nodes]['pixel_count']
+            
     if not invert:
         clusterDict = {k: v for k, v in clusterDict.items() if v >= pixel_min}
     else:
