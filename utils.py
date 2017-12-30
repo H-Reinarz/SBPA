@@ -51,9 +51,9 @@ def CountPixel(g, fs, pixel_min=0, invert=False):
         fs = [fs]
     clusterDict = {} # unique cluster set
     for _fs in fs:
-        clusterDict[_fs.label] = 0
+        clusterDict[str.join(_fs.label)] = 0
         for nodes in _fs.order:
-            clusterDict[_fs.label] += g.node[nodes]['pixel_count']
+            clusterDict[str.join(_fs.label)] += g.node[nodes]['pixel_count']
             
     if not invert:
         clusterDict = {k: v for k, v in clusterDict.items() if v >= pixel_min}
