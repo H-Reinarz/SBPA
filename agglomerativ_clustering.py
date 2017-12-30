@@ -14,9 +14,9 @@ from sklearn.cluster import DBSCAN
 
 def AgglCluster(g, attr_name, fs_spec, n_clusters=2, pixel_min=-1, superpixel_min=2, original_variance = None, limit_percent=30):
     if isinstance(fs_spec, bow_rag.BOW_RAG.fs_spec):
-        #connectivity = nx.adjacency_matrix(g, weight=None)
-        #g.clustering(attr_name, 'AgglomerativeClustering', fs_spec, n_clusters=n_clusters, linkage="ward", connectivity=connectivity)
-        g.clustering(attr_name, 'DBSCAN', fs_spec)
+        connectivity = nx.adjacency_matrix(g, weight=None)
+        g.clustering(attr_name, 'AgglomerativeClustering', fs_spec, n_clusters=n_clusters, linkage="ward", connectivity=connectivity)
+        #g.clustering(attr_name, 'DBSCAN', fs_spec)
     
     elif isinstance(fs_spec, list):
         for node in g.__iter__():
@@ -51,12 +51,12 @@ def AgglCluster(g, attr_name, fs_spec, n_clusters=2, pixel_min=-1, superpixel_mi
                         g.node[n][attr_name] = str(fs.label)
                     continue
             
-            #connectivity = nx.adjacency_matrix(subset, weight=None)
+            connectivity = nx.adjacency_matrix(subset, weight=None)
             
-            #cluster_obj = AgglomerativeClustering(n_clusters=n_clusters, linkage='ward',
-            #       connectivity=connectivity).fit(fs.array)  
+            cluster_obj = AgglomerativeClustering(n_clusters=n_clusters, linkage='ward',
+                   connectivity=connectivity).fit(fs.array)  
             
-            cluster_obj = DBSCAN().fit(fs.array)
+            #cluster_obj = DBSCAN().fit(fs.array)
             
             # NEW
 #            noGrow = False

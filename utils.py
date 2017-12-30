@@ -60,4 +60,10 @@ def CountPixel(g, attr_name, pixel_min=0, invert=False):
     else:
         clusterDict = {k: v for k, v in clusterDict.items() if v < pixel_min}
     return clusterDict
+
+def OneToThreeChannel(image, deepcopy = True):
+    if deepcopy:
+        image = np.copy(image)
+    return MergeChannels([image,image,image])
+    
     
