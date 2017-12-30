@@ -12,7 +12,7 @@ Methods to characterize image textures.
 import numpy as np
 from skimage._shared.utils import assert_nD
 import sys
-sys.path.append("C:/Users/janni/Documents/Masterarbeit/src/github/_LBP")
+sys.path.append("./_LBP")
 
 import _lbp
 #import _nilbp
