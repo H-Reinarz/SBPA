@@ -6,8 +6,8 @@ Created on Sat Nov  4 10:38:45 2017
 """
 
 import sys
-sys.path.append("D:/janni/Documents/Geographie/Masterarbeit/src/github")
-sys.path.append("D:/janni/Documents/Geographie/Masterarbeit/src/github/_LBP")
+sys.path.append("C:/Users/janni/Documents/Masterarbeit/src/github")
+sys.path.append("C:/Users/janni/Documents/Masterarbeit/src/github/_LBP")
 
 from skimage import io
 from skimage import data, segmentation
@@ -18,6 +18,7 @@ from skimage.util import img_as_float
 from skimage.segmentation import slic, felzenszwalb
 from skimage.segmentation import quickshift
 from skimage.segmentation import mark_boundaries
+from skimage.transform import rescale
 
 from skimage.color import rgb2gray, rgb2hsv, hsv2rgb, rgb2lab
 from matplotlib import pyplot as plt
@@ -106,14 +107,24 @@ import agglomerativ_clustering as ac
 #            
 
 ####################################
-image = io.imread("D:/janni/Documents/Geographie/Masterarbeit/Data/ra_neu/ra2_small.jpg")
-#image = io.imread("D:/janni/Dropbox/devils_kitchen/resized/2017_0705_113912_520_clip.jpg")
-#image = io.imread("D:/janni/Documents/Geographie/Masterarbeit/Data/ResearchArea/RA1/orthoClipRA1_badRes.jpg")
-height = io.imread("D:/janni/Documents/Geographie/Masterarbeit/Data/ResearchArea/RA1/dsmRA1_test16_resampled.png")
+#image = io.imread("C:/Users/janni/Documents/Masterarbeit/Data/ra_neu/ra3/ra3_small_contrast.jpg")
+image = io.imread("C:/Users/janni/Documents/Masterarbeit/Data/ResearchArea/RA1/orthoRA.jpg")
+#image = io.imread("C:/Users/janni/Desktop/forest.jpg")
+height = io.imread("C:/Users/janni/Documents/Masterarbeit/Data/ResearchArea/RA1/dsmRA1_test16_resampled.png")
+#height = io.imread("C:/Users/janni/Documents/Masterarbeit/Data/ra_neu/ra3/ra3_height_small.png")
+
+
+im_gray = rgb2gray(image)
+im_gray = img_as_float(im_gray)
 
 image = u.ZerosToOne(image, 1)
 image = img_as_float(image)
 height = img_as_float(height)
+
+image = rescale(image, .3)
+im_gray = rescale(im_gray, .3)
+height = rescale(height, .3)
+
 
 gli = rgb.GLI(image)
 vvi = rgb.VVI(image)
@@ -148,22 +159,41 @@ dim1Inverted = 1-dim1
 
 comp1 = u.MergeChannels([dim1Inverted,vvi,tgi])
 
-segments_slic = slic(image, n_segments=1300, compactness=20, sigma=3)
-#segments_slic = felzenszwalb(image, scale=70, sigma=4, min_size=2500)
-#segments_slic = quickshift(image, kernel_size=12, max_dist=24, ratio=0.5)
+segments_slic = slic(image, n_segments=800, compactness=12, sigma=1)
+#segments_slic = felzenszwalb(image, scale=70, sigma=1, min_size=2500)
+#segments_slic = quickshift(image, kernel_size=12, max_dist=12, ratio=0.5)
 print('SLIC number of segments: {}'.format(len(np.unique(segments_slic))))
 f, ax = plt.subplots(figsize=(10, 10))
+ax.imshow(mark_boundaries(image, segments_slic));
 
-ax.imshow(mark_boundaries(image, segments_slic))
-
-im_gray = rgb2gray(image)
 # settings for LBP
+import frequency
+
+test = frequency.FrequencySetup(im_gray, 5, 80, 10, 1.0, 0.1)
+
+print(test.cut_value, test.lbp_radius)
+
+#plt.imshow(test.result(), cmap="gray")
+
+
 METHOD = 'default'
 radius = 8
 
-n_points = 4 
+n_points = 8 
 
-lbp_img = lbp.local_binary_pattern(im_gray, None, 8, radius, method='default', nilbp = True)
+#nilbp = lbp.ni_lbp(im_gray, n_points, test.lbp_radius)
+radlbp = lbp.radial_lbp(im_gray, n_points, test.lbp_radius*2, test.lbp_radius, 'ror')
+anglbp = lbp.angular_lbp(im_gray, 4, test.lbp_radius)
+nilbp = lbp.local_binary_pattern(im_gray, None, test.lbp_radius, radius, method='ror', nilbp = True)
+
+from bow_container import hist
+import lbp_bins
+
+rad_lbp_BINS = lbp_bins.lbp_bins(n_points, "ror")
+ang_lbp_BINS = lbp_bins.lbp_bins(4, "default")
+ni_lbp_BINS = lbp_bins.lbp_bins(n_points, "ror")
+
+
 
 ######################################
 imageLab = rgb2lab(image)
@@ -171,12 +201,27 @@ imageLab = rgb2lab(image)
 Graph = bow_rag.BOW_RAG(segments_slic)
 print(nx.info(Graph))
 Graph.add_attribute('color', u.NormalizeImage(imageLab), np.mean)
+#Graph.add_attribute('height', height, np.median)
 #Graph.normalize_attribute('color', value=255)
 Graph.add_attribute('var', u.NormalizeImage(im_gray), np.var)
 Graph.add_attribute("pc1", dim1Inverted, np.mean)
 Graph.add_attribute("pc1var", dim1Inverted, np.var)
 
-fs_attrs = {'color':1, 'var':.2, 'pc1': 1, 'pc1var': .2}
+Graph.add_attribute('ni_lbp', nilbp, hist, vbins=ni_lbp_BINS)
+Graph.normalize_attribute('ni_lbp')
+Graph.add_attribute('rad_lbp', radlbp, hist, vbins=rad_lbp_BINS)
+Graph.normalize_attribute('rad_lbp')
+Graph.add_attribute('ang_lbp', anglbp, hist, vbins=ang_lbp_BINS)
+Graph.normalize_attribute('ang_lbp')
+
+lbp_config = {'ni_lbp':0.01, 'rad_lbp':0.01, 'ang_lbp':0.01}
+#lbp_config = {'ni_lbp':0.01}
+lbp_fs = Graph.hist_to_fs_array(lbp_config)
+
+Graph.cluster_affinity_attrs("texture", "KMeans", lbp_fs, n_clusters=5)
+
+
+fs_attrs = {'color':1.2, 'var':.3, 'pc1': .7, 'pc1var': .7, "texture": .7}
 fs1 = Graph.basic_feature_space_array(fs_attrs)
 
 
@@ -185,7 +230,7 @@ connectivity = nx.adjacency_matrix(Graph, weight=None)
 
 n_clusters = 2  # number of regions
 
-nr = ac.AgglCluster_Cascade(Graph, fs_attrs, "cluster", automatic = True, pixel_min =  60000, superpixel_min = 2, variance=True, limit_percent=8)
+nr = ac.AgglCluster_Cascade(Graph, fs_attrs, "cluster", automatic = True, pixel_min =  10000, superpixel_min = 2, variance=True, limit_percent=5)
 
 #
 #AgglCluster(Graph, "cluster1", fs1, 3)
@@ -219,11 +264,11 @@ from skimage import color
 cluster_img = Graph.produce_cluster_image('cluster'+str(nr-1))
 out = color.label2rgb(cluster_img, image, kind='avg')
 out = segmentation.mark_boundaries(out, cluster_img, (0, 0, 0))
-f, ax = plt.subplots(figsize=(15, 15))
+f, ax = plt.subplots(figsize=(10, 10))
 ax.imshow(mark_boundaries(image, cluster_img));
 
 from visual import plot_node_attribute
-f, ax = plt.subplots(figsize=(18, 18))
+f, ax = plt.subplots(figsize=(10, 10))
 
 ax.imshow(image)
 ax.imshow(out, alpha = .4)
@@ -231,13 +276,12 @@ ax.imshow(cluster_img, cmap=plt.cm.spectral, alpha=.2)
 #plot_node_attribute(ax, Graph, 'labels', 12)
 
 
-f, ax = plt.subplots(figsize=(15, 15))
-ax.imshow(mark_boundaries(image, cluster_img));
 
 
         
-
-    
+#cluster_img = Graph.produce_cluster_image('cluster'+str(nr-2))
+#f, ax = plt.subplots(figsize=(10, 10))
+#ax.imshow(mark_boundaries(image, cluster_img));
     
     
     

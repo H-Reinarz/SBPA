@@ -15,7 +15,7 @@ import sys
 sys.path.append("./_LBP")
 
 import _lbp
-import _nilbp
+#import _nilbp
 import _lbp_rad
 import _lbp_ang
 
@@ -89,26 +89,26 @@ def local_binary_pattern(image, textureMap, P, R, method='default', nilbp = Fals
     output = _lbp._local_binary_pattern(image, textureMap, P, R, methods[method.lower()], nilbp)
     return output
 
-
-def ni_lbp(image, P, R, method='default'):
-    """Neighbour Intensity LBP"""
-    
-    
-    assert_nD(image, 2)
-
-    methods = {
-        'default': ord('D'),
-        'ror': ord('R'),
-        'uniform': ord('U'),
-        'nri_uniform': ord('N'),
-        'var': ord('V'),
-    }
-    
-        
-    image = np.ascontiguousarray(image, dtype=np.double)
-    output = _nilbp._ni_lbp(image, P, R, methods[method.lower()])
-    return output
-
+#
+#def ni_lbp(image, P, R, method='default'):
+#    """Neighbour Intensity LBP"""
+#    
+#    
+#    assert_nD(image, 2)
+#
+#    methods = {
+#        'default': ord('D'),
+#        'ror': ord('R'),
+#        'uniform': ord('U'),
+#        'nri_uniform': ord('N'),
+#        'var': ord('V'),
+#    }
+#    
+#        
+#    image = np.ascontiguousarray(image, dtype=np.double)
+#    output = _nilbp._ni_lbp(image, P, R, methods[method.lower()])
+#    return output
+#
 
 def radial_lbp(image, P, R_OUT, R_IN, method='default'):
     """Radial Difference LBP"""
