@@ -6,15 +6,13 @@ Created on Sat Nov  4 10:38:45 2017
 """
 import bow_rag
 
-def SingleFeature(rag, fs, layer_in, layer_out = None):
-    ''' Transforms multifeature clusters to single feature clusters on the graph'''
+def SingleFeature(rag, fs, layer):
+    ''' Transforms multifeature clusters to single feature clusters on the graph,
+    and adds them to the layer list'''
     
     if isinstance(fs, bow_rag.BOW_RAG.fs_spec):
         fs = [fs]
-    
-    if layer_out is None:
-        layer_out = layer_in
-    
+        
     processed = set() # Keep track which node has already been processed
     
     for _fs in fs:
@@ -23,21 +21,49 @@ def SingleFeature(rag, fs, layer_in, layer_out = None):
             if node in processed:
                 continue
             # Isolate current node
-            Isolate(rag, node, cluster, processed, layer_in, layer_out)
+            Isolate(rag, node, cluster, processed, layer)
             cluster += 1
     
 
-def Isolate(rag, node, clusters, processed, attr_name_in, attr_name_out):
+def Isolate(rag, node, clusters, processed, layer):
     # Node is processed and gets new cluster ID
     processed.add(node)
         
     # Do the same for all neighbors with the same previous cluster
     for neighbour in rag.neighbors_iter(node):
-        if (rag.node[node][attr_name_in] == rag.node[neighbour][attr_name_in]) and neighbour not in processed:
-            Isolate(rag, neighbour, clusters, processed, attr_name_in, attr_name_out)   
+        if (rag.node[node][layer] == rag.node[neighbour][layer]) and neighbour not in processed:
+            Isolate(rag, neighbour, clusters, processed, layer)   
     
-    rag.node[node][attr_name_out] = rag.node[node][attr_name_in] + str(clusters)
+    rag.node[node][layer].append(str(clusters))
 
+def CountMultiFeatures(rag, fs, layer):
+    '''Counts features (non continues cluster patches) of multifeature clusters'''
+    
+    if not isinstance(fs, bow_rag.BOW_RAG.fs_spec):
+        raise TypeError("Must be BOW_RAG.fs_spec!")
+        
+    processed = set() # Keep track which node has already been processed
+    
+    isolateNodes = 0
+    
+    for node in fs.order:
+        if node in processed:
+            continue
+        # Isolate current node
+        CountIsolate(rag, node, processed, layer)
+        isolateNodes += 1
+    
+    return isolateNodes
+
+
+def CountIsolate(rag, node, processed, layer):
+    # Node is processed and gets new cluster ID
+    processed.add(node)
+        
+    # Do the same for all neighbors with the same previous cluster
+    for neighbour in rag.neighbors_iter(node):
+        if (rag.node[node][layer] == rag.node[neighbour][layer]) and neighbour not in processed:
+            Isolate(rag, neighbour, processed, layer)   
 
 
 def Absorb(rag, size, attr_name_in, attr_name_out = "cluster_new"):
