@@ -4,37 +4,36 @@ Created on Sat Nov  4 10:38:45 2017
 
 @author: Jannik
 """
-def SingleFeature(rag, attr_name_in, attr_name_out):
+def SingleFeature(rag, fs, layer_in, layer_out = None):
+    ''' Transforms multifeature clusters to single feature clusters'''
     
-    rag_tmp = rag.copy()
+    if layer_out is None:
+        layer_out = layer_in
     
-    # Keep track which node has already been processed
-    for node in rag:
-        rag_tmp.node[node]['processed'] = False
+    processed = set() # Keep track which node has already been processed
     
-    # New Cluster ID        
-    clusters = 0
+    for _fs in fs:
+        cluster = 0
+        for node in _fs.order:
+            if node in processed:
+                continue
+            # Isolate current node
+            Isolate(rag, node, cluster, processed, layer_in, layer_out)
+            cluster += 1
     
-    for node in rag:
-        if rag_tmp.node[node]['processed']:
-            continue
-        
-        # Isolate current node
-        Isolate(rag, node, clusters, rag_tmp, attr_name_in, attr_name_out)
-        clusters += 1
 
-def Isolate(rag, node, clusters, rag_tmp, attr_name_in, attr_name_out):
+def Isolate(rag, node, clusters, processed, attr_name_in, attr_name_out):
     
     # Node is processed and gets new cluster ID
-    rag_tmp.node[node]['processed'] = True
-    rag.node[node][attr_name_out] = clusters
+    processed.add(node)
+    
     
     # Do the same for all neighbors with the same previous cluster
     for neighbour in rag.neighbors_iter(node):
-        if (rag_tmp.node[node][attr_name_in] == rag_tmp.node[neighbour][attr_name_in]) and rag_tmp.node[neighbour]['processed'] == False:
-            
-            Isolate(rag, neighbour, clusters, rag_tmp, attr_name_in, attr_name_out)   
-
+        if (rag.node[node][attr_name_in] == rag.node[neighbour][attr_name_in]) and neighbour not in processed:
+            Isolate(rag, neighbour, clusters, processed, attr_name_in, attr_name_out)   
+    
+    rag.node[node][attr_name_out] = rag.node[node][attr_name_in] + str(clusters)
 
 def Absorb(rag, size, attr_name_in, attr_name_out = "cluster_new"):
     

@@ -108,8 +108,8 @@ import agglomerativ_clustering as ac
 
 ####################################
 #image = io.imread("C:/Users/janni/Documents/Masterarbeit/Data/ra_neu/ra3/ra3_small_contrast.jpg")
-image = io.imread("C:/Users/janni/Documents/Masterarbeit/Data/ResearchArea/RA1/orthoClipRA1_badRes.jpg")
-image = io.imread("C:/Users/janni/Desktop/forest.jpg")
+image = io.imread("C:/Users/janni/Documents/Masterarbeit/Data/ResearchArea/RA1/orthoRA.jpg")
+#image = io.imread("C:/Users/janni/Desktop/forest.jpg")
 height = io.imread("C:/Users/janni/Documents/Masterarbeit/Data/ResearchArea/RA1/dsmRA1_test16_resampled.png")
 #height = io.imread("C:/Users/janni/Documents/Masterarbeit/Data/ra_neu/ra3/ra3_height_small.png")
 
@@ -121,9 +121,9 @@ image = u.ZerosToOne(image, 1)
 image = img_as_float(image)
 height = img_as_float(height)
 
-image = rescale(image, .8)
-im_gray = rescale(im_gray, .8)
-height = rescale(height, .8)
+image = rescale(image, .3)
+im_gray = rescale(im_gray, .3)
+height = rescale(height, .3)
 
 
 gli = rgb.GLI(image)
@@ -159,7 +159,7 @@ dim1Inverted = 1-dim1
 
 comp1 = u.MergeChannels([dim1Inverted,vvi,tgi])
 
-segments_slic = slic(image, n_segments=2000, compactness=12, sigma=1)
+segments_slic = slic(image, n_segments=800, compactness=12, sigma=1)
 #segments_slic = felzenszwalb(image, scale=70, sigma=1, min_size=2500)
 #segments_slic = quickshift(image, kernel_size=12, max_dist=12, ratio=0.5)
 print('SLIC number of segments: {}'.format(len(np.unique(segments_slic))))
@@ -221,7 +221,7 @@ lbp_fs = Graph.hist_to_fs_array(lbp_config)
 Graph.cluster_affinity_attrs("texture", "KMeans", lbp_fs, n_clusters=5)
 
 
-fs_attrs = {'color':1.5, 'var':.3, 'pc1': .7, 'pc1var': .2, "texture": .7}
+fs_attrs = {'color':1.2, 'var':.3, 'pc1': .7, 'pc1var': .7, "texture": .7}
 fs1 = Graph.basic_feature_space_array(fs_attrs)
 
 
@@ -230,7 +230,7 @@ connectivity = nx.adjacency_matrix(Graph, weight=None)
 
 n_clusters = 2  # number of regions
 
-nr = ac.AgglCluster_Cascade(Graph, fs_attrs, "cluster", automatic = True, pixel_min =  10000, superpixel_min = 2, variance=True, limit_percent=7)
+nr = ac.AgglCluster_Cascade(Graph, fs_attrs, "cluster", automatic = True, pixel_min =  10000, superpixel_min = 2, variance=True, limit_percent=5)
 
 #
 #AgglCluster(Graph, "cluster1", fs1, 3)
