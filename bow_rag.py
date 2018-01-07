@@ -63,10 +63,13 @@ class BOW_RAG(RAG):
 
         #Init edge weight statistics
         self.edge_weight_stats = {}
-        
+
         #dict for storing cluster properties
         self.cluster_props = {}
 
+        #Setup simple pixel index map
+        index_map = np.arange(seg_img.size, dtype=np.int64)
+        index_map.reshape(seg_img.shape)
 
         #Set indipendent node attributes
         for node in self.__iter__():
@@ -75,7 +78,19 @@ class BOW_RAG(RAG):
 
             #Assign attributes to node
             self.node[node].update({'labels': [node],
+                                    'pixels': set(index_map[label_mask]),
                                     'pixel_count': seg_img[label_mask].size})
+
+
+    def mask(self, nodes):
+        '''asdf'''
+
+        mask_set = set()
+        for node in nodes:
+            for pixel in self.node[node]['pixels']:
+                mask_set.add(pixel)
+
+        return np.array(list(mask_set), dtype=np.int64)
 
 
     def deepcopy_node(self, node):
@@ -293,22 +308,23 @@ class BOW_RAG(RAG):
         return BOW_RAG.fs_spec(fs_array, tuple(order_list), label, con_matrix)
 
 
+#NOT UP TO DATE
 
-    def attribute_divided_fs_arrays(self, attr_config, div_attr, exclude=()):
-        '''Return a feature space array for every value of a specified attribute.
-        Nodes are excludable via the 'exclude' parameter.'''
-
-        return_list = []
-
-        div_attr_labels = {self.node[node][div_attr] for node in self.__iter__()}
-
-        for label in div_attr_labels:
-            nodes = self.filter_by_attribute(div_attr, {label})
-            fs_result = self.basic_feature_space_array(attr_config, label, nodes, exclude)
-
-            return_list.append(fs_result)
-
-        return return_list
+#    def attribute_divided_fs_arrays(self, attr_config, div_attr, exclude=()):
+#        '''Return a feature space array for every value of a specified attribute.
+#        Nodes are excludable via the 'exclude' parameter.'''
+#
+#        return_list = []
+#
+#        div_attr_labels = {self.node[node][div_attr] for node in self.__iter__()}
+#
+#        for label in div_attr_labels:
+#            nodes = self.filter_by_attribute(div_attr, {label})
+#            fs_result = self.basic_feature_space_array(attr_config, label, nodes, exclude)
+#
+#            return_list.append(fs_result)
+#
+#        return return_list
 
 
 
@@ -345,21 +361,21 @@ class BOW_RAG(RAG):
                 order_list.append(node)
 
         fs_array = np.array(array_list, dtype=np.float64)
-        
+
         con_matrix = self.produce_connectivity_matrix(subset)
 
         return BOW_RAG.fs_spec(fs_array, tuple(order_list), label, con_matrix)
 
 
 
-    def clustering(self, layer, algorithm, fs_spec, return_clust_obj=False, **cluster_kwargs):
+    def clustering(self, attribute, algorithm, fs_spec, return_clust_obj=False, **cluster_kwargs):
         '''Perform any clustering operation from sklearn.cluster on a given feature space array
         (as returnd by 'get_feature_space_array()' or 'hist_to_fs_array()').
         Return the cluster label of each node as an attribute.'''
 
         for node in self.__iter__():
-            
-            self.node[node][layer] = None
+
+            self.node[node][attribute] = None
 
         cluster_class = getattr(sklearn.cluster, algorithm)
 
@@ -369,14 +385,14 @@ class BOW_RAG(RAG):
             for node, label in zip(fs_spec.order, cluster_obj.labels_):
                 #print(node, label)
                 #Make sure the clustered feature space and the node have the same label
-                if layer in self.node[node]:
-                    assert(fs_spec.label == self.node[node][layer])
-                    self.node[node][layer].append(str(label))
+                if attribute in self.node[node]:
+                    assert(fs_spec.label == self.node[node][attribute])
+                    self.node[node][attribute].append(str(label))
                 else:
-                    self.node[node][layer] = [str(label)]
+                    self.node[node][attribute] = [str(label)]
 
-            
-            
+
+
             if return_clust_obj:
                 return cluster_obj
 
@@ -385,14 +401,14 @@ class BOW_RAG(RAG):
             return_clust_obj=False
 
             for fs in fs_spec:
-                self.clustering(layer, algorithm, fs_spec, return_clust_obj, **cluster_kwargs)
+                self.clustering(attribute, algorithm, fs_spec, return_clust_obj, **cluster_kwargs)
 
 
         else:
             raise TypeError("Must be BOW_RAG.fs_spec!")
 
 
-    def cluster_affinity_attrs(self, layer, algorithm, fs_spec, stretch=None, limit=None, centralize=1, **cluster_kwargs):
+    def cluster_affinity_attrs(self, attribute, algorithm, fs_spec, stretch=None, limit=None, centralize=1, **cluster_kwargs):
         '''Perform a clustering operation using the clustering() method and store the affinity of the node to each cluster
         (the distance to each )'''
 
@@ -403,7 +419,7 @@ class BOW_RAG(RAG):
         elif not isinstance(stretch, tuple):
             raise TypeError("stretch must be tuple")
 
-        cluster_obj = self.clustering(layer, algorithm, fs_spec, return_clust_obj=True, **cluster_kwargs)
+        cluster_obj = self.clustering(attribute, algorithm, fs_spec, return_clust_obj=True, **cluster_kwargs)
 
         n_clusters = cluster_obj.cluster_centers_.shape[0]
 
@@ -411,7 +427,7 @@ class BOW_RAG(RAG):
         distances = []
         for row, node in enumerate(fs_spec.order):
 
-            self.node[node][layer] = []
+            self.node[node][attribute] = []
 
             node_vector = fs_spec.array[row]
 
@@ -421,7 +437,7 @@ class BOW_RAG(RAG):
                 distance = np.linalg.norm(center_vector - node_vector)
                 distances.append(distance)
 
-                self.node[node][layer].append(distance)
+                self.node[node][attribute].append(distance)
 
         min_dist = min(distances)
         stretch_denom = max(distances) - min_dist
@@ -429,38 +445,48 @@ class BOW_RAG(RAG):
 
 
         for node in self.__iter__():
-            for ix, affinity in enumerate(self.node[node][layer]):
+            for ix, affinity in enumerate(self.node[node][attribute]):
                 affinity -= min_dist
                 affinity /= stretch_denom
 
                 affinity *= stretch[1] - stretch[0]
                 affinity += stretch[0]
-                self.node[node][layer][ix] = affinity
+                self.node[node][attribute][ix] = affinity
 
 
 
-    def assess_node_grouping():
+    def apply_group_metrics(self, fs, metric_config):
         '''IN DEVELOPMENT'''
-        pass
+        metric_dict = dict.fromkeys(metric_config)
+
+        for metric, function in metric_config.items():
+            metric_dict[metric] = function(self, fs)
+
+        return metric_dict
 
 
-#    def produce_cluster_image(self, attribute, dtype=np.int64):
-#        '''Render an image (2D numpy array) of cluster labels based
-#        on a cluster label node attribute.'''
-#
-#        attr_labels = {self.node[node][attribute] for node in self.__iter__()}
-#        label_dict = dict(zip(attr_labels, range(len(attr_labels))))
-#
-#        print(label_dict)
-#
-#        cluster_img = np.zeros_like(self.seg_img, dtype=dtype)
-#
-#        for node in self.__iter__():
-#            for label in set(self.node[node]['labels']):
-#                mask = self.seg_img == label
-#                cluster_img[mask] = label_dict[self.node[node][attribute]]
-#
-#        return cluster_img
+    def produce_cluster_image(self, attribute, max_layer=None, dtype=np.int64):
+        '''Render an image (2D numpy array) of cluster labels based
+        on a cluster label node attribute.'''
+
+        if max_layer is not None:
+            attr_labels = {'-'.join(self.node[node][attribute][:max_layer]) for node in self.__iter__()}
+        else:
+            attr_labels = {'-'.join(self.node[node][attribute]) for node in self.__iter__()}
+
+        label_dict = dict(zip(attr_labels, range(len(attr_labels))))
+
+        print(label_dict)
+
+        cluster_img = np.zeros_like(self.seg_img, dtype=dtype)
+
+        for node in self.__iter__():
+            for label in set(self.node[node]['labels']):
+                mask = self.seg_img == label
+                attr_string = '-'.join(self.node[node][attribute][:max_layer])
+                cluster_img[mask] = label_dict[attr_string ]
+
+        return cluster_img
 
 
     def neighbour_cross_tabulation(self, attribute):
