@@ -454,7 +454,37 @@ class BOW_RAG(RAG):
                 self.node[node][attribute][ix] = affinity
 
 
-
+    def single_feature(self, fs, layer):
+        ''' Transforms multifeature clusters to single feature clusters on the graph,
+        and adds them to the layer list'''
+        
+        if isinstance(fs, BOW_RAG.fs_spec):
+            fs = [fs]
+            
+        processed = set() # Keep track which node has already been processed
+        
+        for _fs in fs:
+            cluster = 0
+            for node in _fs.order:
+                if node in processed:
+                    continue
+                # Isolate current node
+                self.isolate(self, node, cluster, processed, layer)
+                cluster += 1
+    
+    
+    def isolate(self, node, clusters, processed, layer):
+        # Node is processed and gets new cluster ID
+        processed.add(node)
+            
+        # Do the same for all neighbors with the same previous cluster
+        for neighbour in self.neighbors_iter(node):
+            if (self.node[node][layer] == self.node[neighbour][layer]) and neighbour not in processed:
+                self.isolate(self, neighbour, clusters, processed, layer)   
+        
+        self.node[node][layer].append(str(clusters))
+    
+    
     def apply_group_metrics(self, fs, metric_config):
         '''IN DEVELOPMENT'''
         metric_dict = dict.fromkeys(metric_config)
