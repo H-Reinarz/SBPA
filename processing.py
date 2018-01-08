@@ -6,6 +6,14 @@ Created on Sat Jan  6 16:16:39 2018
 @author: hre070
 """
 
+from collections import namedtuple
+
+
+
+threshhold = namedtuple('threshhold', ['value', 'operator'])
+
+fs_bundle = namedtuple('bundle', ['graph', 'feature_space', 'metric_dict'])
+
 #IN DEVELOPMENT
 
 class threshhold_stage(object):
@@ -15,6 +23,7 @@ class threshhold_stage(object):
         self.threshhold_dict = threshhold_dict
         self.next_stage_true = None
         self.next_stage_false = None
+        self.kwargs = kwargs
         
       
     def set_successor_stages(self, true, false):
@@ -25,27 +34,39 @@ class threshhold_stage(object):
         evaluation = False
         
         for metric, thresh in self.threshhold_dict.items():
-            if metric_dict[metric] > thresh:
+            if eval(f'{metric_dict[metric]} {thresh.operator} {tresh.value}'):
                 evaluation = True
                 
         return evaluation
     
-    def react_to_true(self, item):
+    def react_to_true(self, bundle):
         if self.next_stage_true is not None:
-            self.next_stage_true.send(item)
+            self.next_stage_true.send(bundle)
     
-    def react_to_false(self, item):
+    def react_to_false(self, bundle):
         if self.next_stage_false is not None:
-            self.next_stage_false.send(item)
+            self.next_stage_false.send(bundle)
         
     def __call__(self):
         while True:
-            item = yield
+            bundle = yield
+            
+            assert(isinstance(bundle, fs_bundle))
                     
-            if self.evaluate(item):
-                self.react_to_true(item)
+            if self.evaluate(bundle.metric_dict):
+                self.react_to_true(bundle)
             else:
-                self.react_to_false(item)
+                self.react_to_false(bundle)
                 
+
 class cluster_stage(threshhold_stage):
-    pass
+    
+    def react_to_true(self, bundle):
+        cluster_kwargs = dict(self.kwargs)
+        
+        for kwarg in ('attribute', 'algorithm', 'fs_spec', 'return_clust_obj'):
+            del cluster_kwargs[kwarg]
+            
+        bundle.graph.clustering(self.kwargs['attribute'], self.kwargs['algorithm'],
+                                bundle.feature_space, **cluster_kwargs)
+        
