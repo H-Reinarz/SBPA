@@ -59,6 +59,8 @@ class threshhold_stage(object):
                 self.react_to_false(bundle)
                 
 
+
+
 class cluster_stage(threshhold_stage):
     
     def react_to_true(self, bundle):
@@ -69,4 +71,32 @@ class cluster_stage(threshhold_stage):
             
         bundle.graph.clustering(self.kwargs['attribute'], self.kwargs['algorithm'],
                                 bundle.feature_space, **cluster_kwargs)
+
+
+
+class splitting_stage(threshhold_stage):
+    pass
+    
+
+
+
+def dynamic_clustering_loop(start_bundle, entry_point):
+    
+    bundle_list = []
+    
+    bundle_list.append(start_bundle)
+    
+    for bundle in bundle_list:
+        entry_point.send(bundle)
         
+        new_bundles = yield
+        
+        for new_bun in new_bundles:
+            bundle_list.append(new_bun)
+        
+
+def dynamic_clustering(graph, attr_config, attribute, entry_point):
+    
+    graph.basic_feature_space_array()
+    
+    

@@ -200,18 +200,23 @@ class BOW_RAG(RAG):
 
 
 
-    def delete_attributes(self, attribute):
+    def delete_attribute(self, attribute):
         '''Delete a given attribute.'''
         for node in self.__iter__():
             del self.node[node][attribute]
 
 
-    def filter_by_attribute(self, attribute, values):
+    def filter_by_attribute(self, attribute, values, subset=None):
         '''Filter the nodes based on their value of a specified attribute.'''
+
+        if subset is None:
+            subset = set(self.__iter__())
+        else:
+            subset = set(subset)
 
         func = lambda node: self.node[node][attribute] in values
 
-        return list(filter(func, self.__iter__()))
+        return list(filter(func, subset))
 
 
 
@@ -310,21 +315,30 @@ class BOW_RAG(RAG):
 
 #NOT UP TO DATE
 
-#    def attribute_divided_fs_arrays(self, attr_config, div_attr, exclude=()):
-#        '''Return a feature space array for every value of a specified attribute.
-#        Nodes are excludable via the 'exclude' parameter.'''
-#
-#        return_list = []
-#
-#        div_attr_labels = {self.node[node][div_attr] for node in self.__iter__()}
-#
-#        for label in div_attr_labels:
-#            nodes = self.filter_by_attribute(div_attr, {label})
-#            fs_result = self.basic_feature_space_array(attr_config, label, nodes, exclude)
-#
-#            return_list.append(fs_result)
-#
-#        return return_list
+    def attribute_divided_fs_arrays(self, attr_config, div_attr, max_layer=None, subset=None, exclude=()):
+        '''Return a feature space array for every value of a specified attribute.
+        Nodes are excludable via the 'exclude' parameter.'''
+        
+        temp_attr = 'temp_' + div_attr
+
+        return_list = []
+
+        for node in subset:
+            if max_layer is not None:
+                self.node[node][temp_attr] = '-'.join(self.node[node][div_attr][:max_layer])
+            else:
+                self.node[node][temp_attr] = '-'.join(self.node[node][div_attr])
+
+        div_attr_labels = {self.node[node][temp_attr] for node in self.__iter__()}
+
+        for label in div_attr_labels:
+            nodes = self.filter_by_attribute(temp_attr, {label}, subset)
+            fs_result = self.basic_feature_space_array(attr_config, label.split('-'), nodes, exclude)
+
+            return_list.append(fs_result)
+
+        self.delete_attribute(temp_attr)
+        return return_list
 
 
 
