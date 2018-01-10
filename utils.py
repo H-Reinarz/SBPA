@@ -5,17 +5,26 @@ Created on Thu Nov  9 23:19:31 2017
 @author: Jannik
 """
 import numpy as np
-import bow_rag
 
-def RemoveChannels(image, channelsToRemove):
-    return np.delete(image, np.array(channelsToRemove),2)
 
-def KeepChannels(image, channelsToKeep):
+def remove_channels(image, channels_to_remove):
+    '''Takes list of channel indices to remove from an image'''
+    
+    return np.delete(image, np.array(channels_to_remove),2)
+
+
+
+def keep_channels(image, channels_to_keep):
+    '''Takes list of channel indices to keep (all others will be dropped)'''
+    
     channels = list(range(image.shape[2]))
-    channelsToRemove = [c for c in channels if c not in channelsToKeep]
-    return np.delete(image, np.array(channelsToRemove),2)
+    channels_to_remove = [c for c in channels if c not in channels_to_keep]
+    return np.delete(image, np.array(channels_to_remove),2)
 
-def NormalizeImage(image, deepcopy=True):
+
+
+def normalize_image(image, deepcopy=True):
+    '''Normalize Image to 0.0 - 1.0'''
     if deepcopy:
         image = np.copy(image)
     if image.ndim == 2:
@@ -27,41 +36,51 @@ def NormalizeImage(image, deepcopy=True):
             image[:,:,ix] /= np.max(image[:,:,ix])
     return image
 
-def MergeChannels(listOfChannels):
-    zipped = np.dstack(listOfChannels)
+
+
+def merge_channels(list_of_channels):
+    '''Merge list of single channel images to multi channel image'''
+    
+    zipped = np.dstack(list_of_channels)
     return zipped
 
-def AddValue(image, value):
+
+
+def add_value(image, value):
+    '''Add a value to all pixels'''
+    
     image += value
     return image
 
-def ZerosToOne(image, value):
-    image[image == 0] += value
+
+
+def value_to_value(image, value_old, value_new):
+    '''Set specific pixel to specific value'''
+    
+    image[image == value_old] = value_new
     return image
 
-def HighestValueMinusOne(image, value=1):
+
+
+def highest_value_minus_one(image, value=1):
+    '''Substract 1 from 255 in an image'''
+    
     image[image == 255] -= value
     return image
 
-def ImageFromArray(array, image):
+
+
+def image_from_array(array, image):
+    '''Brings flattened array into the shape of an image'''
+    
     return np.reshape(array, (image.shape[0], image.shape[1]))
 
-def CountPixel(g, fs, pixel_min=0, invert=False):
-    if isinstance(fs, bow_rag.BOW_RAG.fs_spec):
-        fs = [fs]
-    clusterDict = {} # unique cluster set
-    for _fs in fs:
-        clusterDict[str.join(_fs.label)] = 0
-        for nodes in _fs.order:
-            clusterDict[str.join(_fs.label)] += g.node[nodes]['pixel_count']
-            
-    if not invert:
-        clusterDict = {k: v for k, v in clusterDict.items() if v >= pixel_min}
-    else:
-        clusterDict = {k: v for k, v in clusterDict.items() if v < pixel_min}
-    return clusterDict
 
-def OneToThreeChannel(image, deepcopy = True):
+
+def one_to_three_channels(image, deepcopy = True):
+    '''Makes a single channel image to a multi channel image by duplicating
+    channel'''
+    
     if deepcopy:
         image = np.copy(image)
     return MergeChannels([image,image,image])

@@ -22,7 +22,6 @@ def plot_sp_labels(axes, labels, fontsize, subset=None, **text_kwargs):
     pt_ratio = wext.height/labels.shape[0]
     pt_size = round(fontsize*pt_ratio)
 
-
     if subset is not None:
         subset = set(subset)
 
@@ -53,7 +52,6 @@ def plot_node_attribute(axes, graph, attribute, fontsize, subset=None, **text_kw
     pt_ratio = wext.height/graph.seg_img.shape[0]
     pt_size = round(fontsize*pt_ratio)
 
-
     if subset is not None:
         subset = set(subset)
 
@@ -70,8 +68,6 @@ def plot_node_attribute(axes, graph, attribute, fontsize, subset=None, **text_kw
 
     #decrement to restore original data
     graph.seg_img -= 1
-
-
 
 
 

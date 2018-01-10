@@ -6,14 +6,12 @@ Created on Mon Aug  7 14:25:44 2017
 @author: hre070
 '''
 
-#Imports
 import statistics as stats
 from collections import namedtuple, Counter
 import copy
 import networkx as nx
-#from itertools import repeat
 import numpy as  np
-from bow_container import hist
+from bow_container import Hist as hist
 from skimage.future.graph import RAG
 from skimage.measure import regionprops
 import sklearn.cluster
@@ -34,7 +32,6 @@ def calc_attr_value(*, array, func, **kwargs):
 
 
 
-
 #Subclass of RAG specified for BOW classification
 class BOW_RAG(RAG):
     '''Subclass of the 'region adjacency graph' (RAG) in skimage to accomodate for
@@ -43,7 +40,6 @@ class BOW_RAG(RAG):
     config = namedtuple('AttributeConfig', ['img', 'func', 'kwargs'])
 
     fs_spec = namedtuple('fs_spec', ['array', 'order', 'label', 'connectivity'])
-
 
 
     def __init__(self, seg_img, **attr):
@@ -163,8 +159,6 @@ class BOW_RAG(RAG):
             self.node[node].update({new_attribute: lookup_dict[key]})
 
 
-
-
     def add_regionprops(self):
         '''Function to assign geometric properties of the represented region
         as node attributes. IN DEVELOPMENT!'''
@@ -198,8 +192,6 @@ class BOW_RAG(RAG):
                     self.node[node][attribute] /= value
 
 
-
-
     def delete_attributes(self, attribute):
         '''Delete a given attribute.'''
         for node in self.__iter__():
@@ -212,7 +204,6 @@ class BOW_RAG(RAG):
         func = lambda node: self.node[node][attribute] in values
 
         return list(filter(func, self.__iter__()))
-
 
 
     def calc_edge_weights(self, weight_func):
@@ -255,13 +246,11 @@ class BOW_RAG(RAG):
             return weight_list[index]
 
 
-
     def basic_feature_space_array(self, attr_config, label=[], subset=None, exclude=()):
         '''Arange a specification of attributes into an array that contains
         one row per node. It serves as data points in feature space for clustering operations.
         Nodes are selectable via the 'subset' parameter
         and excludable via the 'exclude' parameter.'''
-
 
         if subset is None:
             subset = set(self.__iter__())
@@ -327,7 +316,6 @@ class BOW_RAG(RAG):
 #        return return_list
 
 
-
     def hist_to_fs_array(self, attr_config, subset=None, label=[]):
         '''Arange a attribute that is itself a histogram into an array that contains
         one row per node. It serves as data points in feature space for clustering operations.'''
@@ -367,7 +355,6 @@ class BOW_RAG(RAG):
         return BOW_RAG.fs_spec(fs_array, tuple(order_list), label, con_matrix)
 
 
-
     def clustering(self, attribute, algorithm, fs_spec, return_clust_obj=False, **cluster_kwargs):
         '''Perform any clustering operation from sklearn.cluster on a given feature space array
         (as returnd by 'get_feature_space_array()' or 'hist_to_fs_array()').
@@ -391,18 +378,14 @@ class BOW_RAG(RAG):
                 else:
                     self.node[node][attribute] = [str(label)]
 
-
-
             if return_clust_obj:
                 return cluster_obj
-
 
         elif isinstance(fs_spec, list):
             return_clust_obj=False
 
             for fs in fs_spec:
                 self.clustering(attribute, algorithm, fs_spec, return_clust_obj, **cluster_kwargs)
-
 
         else:
             raise TypeError("Must be BOW_RAG.fs_spec!")
@@ -423,7 +406,6 @@ class BOW_RAG(RAG):
 
         n_clusters = cluster_obj.cluster_centers_.shape[0]
 
-
         distances = []
         for row, node in enumerate(fs_spec.order):
 
@@ -441,8 +423,6 @@ class BOW_RAG(RAG):
 
         min_dist = min(distances)
         stretch_denom = max(distances) - min_dist
-
-
 
         for node in self.__iter__():
             for ix, affinity in enumerate(self.node[node][attribute]):
@@ -530,8 +510,6 @@ class BOW_RAG(RAG):
         return count
 
 
-
-
     @classmethod
     def old_init(cls, seg_img, tex_img, color_image, tex_bins, color_bins, **attr):
         '''Constructor of the first version of this class to ensure backwards compatibility.'''
@@ -545,11 +523,6 @@ class BOW_RAG(RAG):
         new_rag.normalize_attribute('color')
 
         return new_rag
-
-
-
-
-
 
 
 

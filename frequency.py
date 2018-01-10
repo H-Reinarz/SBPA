@@ -9,15 +9,14 @@ Created on Wed Sep 13 12:22:51 2017
 from math import pi, sqrt
 
 from scipy.spatial.distance import euclidean
-from matplotlib import pyplot as plt
 import numpy as np
 from numpy import fft
 from skimage import draw
 from skimage.filters import gaussian
 #from skimage.restoration import estimate_sigma
-from skimage.measure import find_contours
-from skimage.measure import EllipseModel
-from matplotlib.patches import Ellipse
+from skimage.measure import find_contours, EllipseModel
+
+
 
 def create_radius_map(shape, array_dtype=np.float32):
     '''Create an array where the value of a cell is its distance to the centroid
@@ -56,6 +55,7 @@ def dft_summary(freq, width=1):
     return value_dict
 
 
+
 def xcut_auc(value_dict, cut_perc, width):
     '''Return the position on the x-axis (the radius) where the specified
     percentage of the area under the curve (cut_perc) is reached.
@@ -69,6 +69,7 @@ def xcut_auc(value_dict, cut_perc, width):
             return key - int(round(cut_value/(value/width)))
         else:
             cut_value -= value
+
 
 
 def lowpass_filter(shifted_dft, radius, stretch, upper, lower):
@@ -90,8 +91,8 @@ def lowpass_filter(shifted_dft, radius, stretch, upper, lower):
         add = index+1
         filter_array[radius_array == radius+add] = factor
 
-
     return filter_array
+
 
 
 def get_wavelength(dft_shape, radius):
@@ -105,12 +106,13 @@ def get_wavelength(dft_shape, radius):
     return wavelength
 
 
+
 class FrequencySetup:
     '''Class to provide the 2D-DFT (shifted) of an image
     alongside wavelength and filtered version for texture analysis.'''
 
-    def __init__(self, image, ring_width, cut_percent, lp_stretch, lp_upper, lp_lower):
-        self.dft = fft.fftshift(fft.fft2(image))
+    def __init__(self, img, ring_width, cut_percent, lp_stretch, lp_upper, lp_lower):
+        self.dft = fft.fftshift(fft.fft2(img))
 
         self.summary = dft_summary(self.dft_log(), ring_width)
 
@@ -137,16 +139,14 @@ class FrequencySetup:
 
 
 
-
-
 class DFTanalyzer:
     '''Class to provide the 2D-DFT (shifted) of an image
     and a derived ellipse model representing the the frequencies
     of interest. Based on that model, several parameters
     for image analysis are provided.'''
 
-    def __init__(self, image):
-        self.dft = fft.fftshift(fft.fft2(image))
+    def __init__(self, img):
+        self.dft = fft.fftshift(fft.fft2(img))
         
         self.contour = None
         self.ellipse = None
@@ -156,10 +156,12 @@ class DFTanalyzer:
         self.low_pass = None
         self.filtered_img = None
 
+
     @property
     def abs_log_dft(self):
         '''Return log-transformed DFT.'''
         return np.abs(np.log(self.dft))
+
 
     def fit_model(self, cut_percent, gauss_sigma):
         '''Fit an ellipse model to a contour of a certain
@@ -205,9 +207,6 @@ class DFTanalyzer:
         self.min_patch_size = round(self.texture_radius**2 * pi)
 
 
-
-
-
     def apply_lowpass(self, upper, lower, gauss_sigma=1):
         '''Filter unwanted high frequencies based on the
         ellipse model.'''
@@ -222,87 +221,3 @@ class DFTanalyzer:
         filtered_dft = self.dft * self.low_pass
 
         self.filtered_img = np.abs(fft.ifft2(fft.ifftshift(filtered_dft)))
-
-
-
-
-
-#======================================================================================
-
-if __name__ == "__main__":
-
-
-    from skimage import io
-    from skimage.color import rgb2gray
-#    from numpy.fft import *
-
-    image = io.imread("/home/hre070/MA/DJI_0095_CLIP.jpg")
-    im_gray = rgb2gray(image)
-
-    start = 50
-    width = 400
-
-
-    end = start+width
-
-    clip = im_gray[start:end, start:end]
-
-
-    #Generate random noise within brightness spectrum of the image
-
-#    factor = 10000
-#    lower = clip.min()*factor
-#    upper = clip.max()*factor
-#
-#    noise = np.random.randint(lower, upper, size=clip.shape)/factor
-#
-#
-#    clip += noise
-
-
-
-    #clip = im_gray
-
-    #
-
-    #Apply shifted furier transform
-#    dft = fftshift(fft2(clip))
-
-    #dft_log = np.log(np.abs(dft))
-
-
-
-
-#    result = dft_summary(dft_log, 5)
-#
-#    x_cut = xcut_auc(result, 80, 5)
-#
-#    plot_values = np.array(list(result.values()))
-#
-#    deriv1 = np.diff(plot_values)
-#    deriv2 = np.diff(deriv1)
-
-
-
-    #CLASS TEST
-    test = FrequencySetup(clip, 5, 80, 10, 1.0, 0.1)
-
-    print(test.cut_value, test.lbp_radius)
-
-    plt.imshow(test.result(), cmap="gray")
-
-
-#    f, ax = plt.subplots(nrows=2, figsize=(20,20))
-#
-#    ax[0].imshow(clip, cmap="gray")
-#    ax[1].imshow(dft_log)
-#    ax[2].imshow(new_image, cmap="gray")
-
-#    f, ax = plt.subplots(nrows=3, figsize=(10,10), sharex=True)
-#
-#    ax[0].plot(plot_values)
-#    ax[0].axvline(x_cut, color='r')
-#    ax[1].plot(deriv1, color="r")
-#    ax[2].plot(deriv2, color="g")
-
-    #print(result)

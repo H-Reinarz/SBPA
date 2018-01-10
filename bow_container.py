@@ -9,12 +9,10 @@ Created on Mon Aug 21 20:39:13 2017
 from itertools import repeat
 from math import ceil
 import numpy as np
-#from skimage._shared.utils import assert_nD
 
 
 
-
-class hist:
+class Hist:
     '''Specialized histogramm class for use in
     region adjacency graphs as attribute representation.'''
 
@@ -32,8 +30,6 @@ class hist:
 
             self.container = np.array(list(repeat(value, len(bins))))
 
-
-
         #Image and single value bins (i.e. LBP)
         elif len(args) == 1 and isinstance(args[0], np.ndarray) and 'vbins' in kwargs:
             self.keys = dict(zip(kwargs['vbins'], range(len(kwargs['vbins']))))
@@ -49,15 +45,12 @@ class hist:
                 #individual bin incrementation
                 self.increment(int(pix))
 
-
-
         #dict
         elif len(args) == 1 and isinstance(args[0], dict):
             input_dict = args[0]
             self.keys = dict(zip(input_dict.keys(), range(len(input_dict))))
 
             self.container = np.array(list(input_dict.values()))
-
 
         #image
         elif len(args) == 1 and isinstance(args[0], np.ndarray):
@@ -75,7 +68,6 @@ class hist:
         else:
             raise ValueError("Unusable parameter configuration. Please check source or docs!")
 
-
         #Normalize along with instance creation
         if kwargs.__contains__("normalize") and kwargs["normalize"] is True:
             if not kwargs.__contains__("pixel_count"):
@@ -84,9 +76,8 @@ class hist:
                 self.normalize(kwargs["pixel_count"])
         else:
             self.is_normalized = False
-
-
-
+            
+            
     def normalize(self, denominator):
         """Normalize bin counts against a given number (i.e. pixel count)"""
         self.norm_container = np.zeros(len(self.container))
@@ -107,8 +98,6 @@ class hist:
         for bin_, count in other:
             self[bin_] = self[bin_] + count
         return self
-
-
 
 
     def __iter__(self):
@@ -136,7 +125,6 @@ class hist:
             self.container[key] = value
 
 
-
     def __call__(self, mode='array', normalized=True):
         """Return either a dictionary or numpy array representation
         of the class for use in functions.
@@ -162,7 +150,6 @@ class hist:
             raise ValueError("Parameter 'mode' must be either 'dict' or 'array'!")
 
 
-
     def __str__(self):
         """Return formatted string of the histogram"""
 
@@ -182,8 +169,6 @@ class hist:
             elements = list(zip(keys, counts, norms))
         else:
             elements = list(zip(keys, counts))
-
-
 
         lines = []
 
