@@ -386,10 +386,15 @@ class BOW_RAG(RAG):
         '''Perform any clustering operation from sklearn.cluster on a given feature space array
         (as returnd by 'get_feature_space_array()' or 'hist_to_fs_array()').
         Return the cluster label of each node as an attribute.'''
-
-        for node in self.__iter__():
-
-            self.node[node][attribute] = None
+        
+        #Assert all involved nodes have a list as the given attribute
+        assertion_set = set()
+        for node in fs_spec.order:
+            assert(isinstance(self.node[node][attribute], list))
+            assertion_set.add(len(self.node[node][attribute]))
+        
+        #Assert all nodes have the same number of cluster layers
+        assert(len(assertion_set) == 1)
 
         cluster_class = getattr(sklearn.cluster, algorithm)
 
