@@ -4,49 +4,76 @@ Created on Wed Oct 18 14:09:40 2017
 
 @author: Jannik
 """
-
 import matplotlib.pyplot as plt
+
 import numpy as np
 
-from skimage.feature import greycomatrix, greycoprops
-from skimage import data
 from skimage import io
-from skimage.color import rgb2gray
+from skimage.util.shape import view_as_windows
 from skimage.util import img_as_ubyte
 
-from collections import namedtuple
-
-image = data.camera()
-#image = io.imread("D:/janni/Documents/Geographie/Masterarbeit/Data/ResearchArea/RA1/orthoRA.jpg")
-#image = rgb2gray(image)
-#image = img_as_ubyte(image)
+from mahotas.features import haralick
 
 
-def Glcm(img, window_size, distance, angle):
+image = io.imread("D:/janni/Documents/Geographie/Masterarbeit/Data/ra_neu/ra3/ra3_small.jpg", as_grey = True)
+
+
+
+def Haralick_Textures(img, window_x, window_y, distance = 1):
+    """Returns an un-normalized 13 channel haralick texture image. Input image needs to be 
+    grey-scaled and of type uint. Requires mahotas module."""
+    out = np.zeros((img.size, 13), dtype = np.double)
     
-    measure_list = ["contrast", "dissimilarity", "homogeneity", "ASM", "energy", "correlation"]
-    propTuple = namedtuple('GLCM_Props', measure_list)
-    d = dict.fromkeys(measure_list)
+    img_tmp = np.lib.pad(img, [window_y//2,window_x//2], "symmetric")
     
-    if window_size % 2 == 0:
-        raise ValueError("Window Size must be odd")
+    window_shape = (window_x, window_y)
+    
+    windowed_array = view_as_windows(img_tmp, window_shape)
+    
+    windowed_array_flat = np.reshape(windowed_array, (img.size, window_shape[0], window_shape[1]))
         
-    padding = int(window_size/2)
-    img = np.lib.pad(img, [padding,padding], "symmetric")
+    for i, window in enumerate(windowed_array_flat):
+        haralick_features = haralick(f = window, return_mean = True, distance = distance)
+        out[i] = haralick_features
     
+    out = np.reshape(out, (img.shape[0], img.shape[1], 13))
     
-    for m in measure_list:
-        out = np.zeros_like(img)
-        for y in range(padding,img.shape[0]):
-            for x in range(padding,img.shape[1]):
-                patch = img[y-padding:y+padding+1,
-                            x-padding:x+padding+1]
-                glcm = greycomatrix(patch, distance, angle, 256, symmetric=True, normed=True)
-                #glcm = greycomatrix(patch, distance, **glcm_kwargs)
-                out[y,x] = greycoprops(glcm, m)[0, 0]
-                
-        d[m] = out[padding:-padding,padding:-padding]
-    
-    return propTuple(**d)
+    return out
 
-bob = Glcm(image, 21, [5], [0])
+def normalize_image(image, deepcopy=True):
+    '''Normalize Image to 0.0 - 1.0'''
+    if deepcopy:
+        image = np.copy(image)
+    if image.ndim == 2:
+        image[:,:] += abs(np.min(image[:,:]))
+        image[:,:] /= np.max(image[:,:])
+    elif image.ndim > 2:
+        for ix in range(image.shape[2]):
+            image[:,:,ix] += abs(np.min(image[:,:,ix]))
+            image[:,:,ix] /= np.max(image[:,:,ix])
+    return image
+
+image_uint = img_as_ubyte(image)
+haral = Glcm(image_uint, 3,3)
+final = normalize_image(haral)
+
+f, ax = plt.subplots(ncols = 4, nrows = 4, figsize=(14, 14), sharex=True, sharey=True,
+                       subplot_kw={'adjustable': 'box-forced'})
+ax[0, 0].imshow(final[:,:,0], cmap='viridis')
+ax[0, 1].imshow(final[:,:,1], cmap='viridis')
+ax[0, 2].imshow(final[:,:,2], cmap='viridis')
+ax[0, 3].imshow(final[:,:,3], cmap='viridis')
+ax[1, 0].imshow(final[:,:,4], cmap='viridis')
+ax[1, 1].imshow(final[:,:,5], cmap='viridis')
+ax[1, 2].imshow(final[:,:,6], cmap='viridis')
+ax[1, 3].imshow(final[:,:,7], cmap='viridis')
+ax[2, 0].imshow(final[:,:,8], cmap='viridis')
+ax[2, 1].imshow(final[:,:,9], cmap='viridis')
+ax[2, 2].imshow(final[:,:,10], cmap='viridis')
+ax[2, 3].imshow(final[:,:,11], cmap='viridis')
+ax[3, 0].imshow(final[:,:,12], cmap='viridis')
+
+for a in ax.ravel():
+    a.set_axis_off()
+
+plt.tight_layout()
