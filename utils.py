@@ -70,10 +70,10 @@ def highest_value_minus_one(image, value=1):
 
 
 
-def image_from_array(array, image):
+def image_from_array(array, image_shape):
     '''Brings flattened array into the shape of an image'''
     
-    return np.reshape(array, (image.shape[0], image.shape[1]))
+    return np.reshape(array, image_shape)
 
 
 
