@@ -17,6 +17,10 @@ proc_bundle = namedtuple('ProcessingBundle', ['graph', 'attribute', 'attr_config
 #IN DEVELOPMENT
 
 class logic_stage(object):
+    '''generator class to recieve a bundle object representing a group
+    of notes to process. Decision is made by applying threshholds to a
+    set of metrics. It also serves as a base class for more specialized stages
+    in the same workflow.'''
     
     def __init__(self, threshhold_dict=None, **kwargs):
         
@@ -26,11 +30,15 @@ class logic_stage(object):
         self.kwargs = kwargs
         
       
-    def set_successor_stages(self, true, false):
+    def set_successor_stages(self, true=None, false=None):
+        '''Define the objects to forward the bundle to
+        depending on the evaluation.'''
         self.next_stage_true = true
         self.next_stage_false = false
 
     def evaluate(self, metric_dict):
+        '''Perform the evaluation of a set of metrics
+        with the instances threshholds.'''
         if self.threshhold_dict is not None:
             evaluation = False
             
@@ -43,14 +51,17 @@ class logic_stage(object):
             return False
         
     def react_to_true(self, bundle):
+        '''Action if evaluate() returns True.'''
         if self.next_stage_true is not None:
             self.next_stage_true.send(bundle)
     
     def react_to_false(self, bundle):
+        '''Action if evaluate() returns False.'''
         if self.next_stage_false is not None:
             self.next_stage_false.send(bundle)
         
     def __call__(self):
+        '''Starts the generator for the class functionality.'''
         while True:
             bundle = yield
             
@@ -65,8 +76,11 @@ class logic_stage(object):
 
 
 class cluster_stage(logic_stage):
+    '''Specialized stage that performs a specified clustering
+    on the nodes in the recieved bundle.'''
     
     def react_to_true(self, bundle):
+        '''Specialized reaction peforming the clustering.'''
         cluster_kwargs = dict(self.kwargs)
         
         for kwarg in ('algorithm'):
@@ -82,8 +96,12 @@ class cluster_stage(logic_stage):
 
 
 class splitting_stage(logic_stage):
+    '''Specialized stage to perform the splitting up of a clustered bundle of nodes
+    into a new bundle for each cluster.'''
     
     def react_to_false(self, bundle):
+        '''Specialized stage to split a bundle.
+        Envokes BOW_RAG.attribute_divided_fs_arrays().'''
         if 'bundle_list' not in self.kwargs or not isinstance(self.kwargs['bundle_list'], list):
             raise ValueError('Object needs a list to append!')
         
@@ -105,6 +123,9 @@ class splitting_stage(logic_stage):
         
 
 def dynamic_clustering(graph, attr_config, attribute, metric_config, entry_point, hand_back):
+    '''Function to start a processing workflow involving a network of logic stages.
+    It sends the initial bundle to the entry point and recieves the resulting bundles in 
+    a list and recursivly feeds them to the entry point.'''
 
     bundle_list = []
     
