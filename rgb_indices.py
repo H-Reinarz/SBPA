@@ -5,7 +5,7 @@ Created on Thu Nov  9 22:30:53 2017
 @author: Jannik
 """
 
-import utils as u
+import sbpa_utils as u
 import numpy as np
 from skimage.util import img_as_float
 import copy
