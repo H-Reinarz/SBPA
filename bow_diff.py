@@ -10,6 +10,7 @@ from statistics import mean
 from histogram import Intersection
 
 
+
 #Weighting function: Cumulative difference over bins
 def cumu_diff(graph, node1, node2, **kwargs):
     '''Old weighting function. Don't use!'''
@@ -23,9 +24,11 @@ def cumu_diff(graph, node1, node2, **kwargs):
     return c_diff
 
 
-def _cumu_weight(graph, src, dst, n):
+
+def _cumu_weight(graph, dst, n):
     '''Old weighting function. Don't use!'''
     return {'weight': cumu_diff(graph, dst, n)}
+
 
 
 def config_weighting(attr_dict={'tex': (Intersection, 1), 'color': (Intersection, 1) },

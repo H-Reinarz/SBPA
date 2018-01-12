@@ -7,11 +7,16 @@ Created on Fri Oct  6 18:40:16 2017
 
 import configparser
 
-class dictobject(object):
+class dict_object(object):
+    '''Object for ini'''
+    
+    
     def __init__(self, d):
         self.__dict__ = d
 
-def GetParams(ini):
+
+
+def get_params(ini):
     # https://wiki.python.org/moin/ConfigParserExamples
     config = configparser.ConfigParser()
     config.read(ini)
