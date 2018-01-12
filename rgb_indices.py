@@ -5,7 +5,7 @@ Created on Thu Nov  9 22:30:53 2017
 @author: Jannik
 """
 
-import sbpa_utils as u
+from .sbpa_utils import value_to_value
 import numpy as np
 from skimage.util import img_as_float
 import copy
@@ -70,7 +70,7 @@ def make_rgb_indices(img, normalize = True, zeros = 1):
         raise TypeError("Image has to be unsigned integer for creating RGB Indices!")
     
     image = np.copy(img)
-    image = u.value_to_value(image,0, zeros)
+    image = value_to_value(image,0, zeros)
     image = img_as_float(image)    
     
     rgbi_dict = {"gli":GLI(image),

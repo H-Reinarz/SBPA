@@ -13,7 +13,6 @@ import numpy as np
 from numpy import fft
 from skimage import draw
 from skimage.filters import gaussian
-#from skimage.restoration import estimate_sigma
 from skimage.measure import find_contours, EllipseModel
 
 

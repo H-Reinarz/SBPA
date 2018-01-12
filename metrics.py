@@ -1,11 +1,11 @@
-import bow_rag
+from .ipag import IPAG
 
 def fs_variance(fs):
     ''' Computes variance for complete feature_space. Variance of every
     feature divided by number of features. '''
     
-    if not isinstance(fs, bow_rag.BOW_RAG.fs_spec):
-        raise TypeError("Must be BOW_RAG.fs_spec!")
+    if not isinstance(fs, IPAG.feature_space):
+        raise TypeError("Must be IPAG.fs_spec!")
     
     variance = 0
     
@@ -36,7 +36,7 @@ def cmp_variance(fs, original_var, limit_percent):
 def count_pixel(g, fs, pixel_min=0, invert=False):
     '''Counts pixel of a feature_space'''
     
-    if isinstance(fs, bow_rag.BOW_RAG.fs_spec):
+    if isinstance(fs, IPAG.feature_space):
         fs = [fs]
     clusterDict = {} # unique cluster set
     for _fs in fs:
@@ -55,8 +55,8 @@ def count_pixel(g, fs, pixel_min=0, invert=False):
 def count_multi_features(rag, fs, layer):
     '''Counts features (non continues cluster patches) of multifeature clusters'''
     
-    if not isinstance(fs, bow_rag.BOW_RAG.fs_spec):
-        raise TypeError("Must be BOW_RAG.fs_spec!")
+    if not isinstance(fs, IPAG.feature_space):
+        raise TypeError("Must be IPAG.feature_space!")
         
     processed = set() # Keep track which node has already been processed
     

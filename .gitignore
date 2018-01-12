@@ -1,5 +1,4 @@
 /LBP_BINS
-/_LBP
 /build
 /__pycache__
 setup.py
@@ -11,3 +10,4 @@ cleanup
 *.lib
 *.exp
 *.obj
+*.so

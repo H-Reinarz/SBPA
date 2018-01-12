@@ -5,26 +5,22 @@ Created on Mon Aug  7 14:25:44 2017
 
 @author: hre070
 '''
-
-#Imports
 import statistics as stats
 from collections import namedtuple, Counter
 import copy
 import networkx as nx
-#from itertools import repeat
 import numpy as  np
-from bow_container import hist
+from .histogram import Hist
 from skimage.future.graph import RAG
 from skimage.measure import regionprops
 import sklearn.cluster
-
 
 
 def calc_attr_value(*, array, func, **kwargs):
     '''Helper function to apply a given function to
     a numpy array (i.e. an image) and return the result.
     If the array has multiple dimensions, a list of values is returned.'''
-    #account for multi channels: one hist per channel
+    #account for multi channels: one Hist per channel
     if len(array.shape) == 2:
         result = [func(array[:, dim], **kwargs) for dim in range(array.shape[1])]
     else:
@@ -34,20 +30,19 @@ def calc_attr_value(*, array, func, **kwargs):
 
 
 
-
 #Subclass of RAG specified for BOW classification
-class BOW_RAG(RAG):
-    '''Subclass of the 'region adjacency graph' (RAG) in skimage to accomodate for
+class IPAG(RAG):
+    '''Image Patch Adjacency Graph (IPAG):
+    Subclass of the 'region adjacency graph' (RAG) in skimage to accomodate for
     dynamic attribute assignment, neighbourhood weighting and node clustering.'''
 
-    config = namedtuple('AttributeConfig', ['img', 'func', 'kwargs'])
+    attr_config = namedtuple('AttributeConfig', ['img', 'func', 'kwargs'])
 
-    fs_spec = namedtuple('fs_spec', ['array', 'order', 'label', 'connectivity'])
-
+    feature_space = namedtuple('feature_space', ['array', 'order', 'label', 'connectivity'])
 
 
     def __init__(self, seg_img, **attr):
-        '''BOW_RAG is initialized with the parents initializer along
+        '''IPAG is initialized with the parents initializer along
         with additional attributes.'''
 
         #Call the RAG constructor
@@ -81,9 +76,9 @@ class BOW_RAG(RAG):
                                     'pixels': set(index_map[label_mask]),
                                     'pixel_count': seg_img[label_mask].size})
 
-
     def mask(self, nodes):
-        '''asdf'''
+        '''Method to produce a index mask for a set
+        of nodes to address corresponding pixels in the image.'''
 
         mask_set = set()
         for node in nodes:
@@ -103,7 +98,7 @@ class BOW_RAG(RAG):
         '''Adds an attribute ('name') to each node by calling 'calc_attr_value()'
         on the subset of the image that is represented by the node.'''
 
-        self.attr_func_configs[name] = BOW_RAG.config(image, function, func_kwargs)
+        self.attr_func_configs[name] = IPAG.attr_config(image, function, func_kwargs)
 
         #Set node attributes
         for node in self.__iter__():
@@ -122,7 +117,7 @@ class BOW_RAG(RAG):
 
         The induced subgraph of the graph contains the nodes in nbunch
         and the edges between those nodes.
-        Implemented in bow_rag to overwrite method of the base class
+        Implemented in ipag to overwrite method of the base class
         """
         bunch = self.nbunch_iter(nbunch)
         # create new graph and copy subgraph into it
@@ -163,8 +158,6 @@ class BOW_RAG(RAG):
             self.node[node].update({new_attribute: lookup_dict[key]})
 
 
-
-
     def add_regionprops(self):
         '''Function to assign geometric properties of the represented region
         as node attributes. IN DEVELOPMENT!'''
@@ -186,18 +179,16 @@ class BOW_RAG(RAG):
         for node in self.__iter__():
             if isinstance(self.node[node][attribute], list):
                 for index, element in enumerate(self.node[node][attribute]):
-                    if isinstance(element, hist):
+                    if isinstance(element, Hist):
                         element.normalize(self.node[node]['pixel_count'])
                     else:
                         self.node[node][attribute][index] = element/value
 
             else:
-                if isinstance(self.node[node][attribute], hist):
+                if isinstance(self.node[node][attribute], Hist):
                     self.node[node][attribute].normalize(self.node[node]['pixel_count'])
                 else:
                     self.node[node][attribute] /= value
-
-
 
 
     def delete_attribute(self, attribute):
@@ -219,7 +210,6 @@ class BOW_RAG(RAG):
         return list(filter(func, subset))
 
 
-
     def calc_edge_weights(self, weight_func):
         '''Apply a given weighting function to all edges.'''
 
@@ -236,6 +226,7 @@ class BOW_RAG(RAG):
     def calc_edge_weight_stats(self, attr_label='weight'):
         '''Perform descriptive stats on a given edge attribute.
         Result is stored as a graph attribute.'''
+        
         weight_list = self.get_edge_weight_list(attr_label)
 
         self.edge_weight_stats['min'] = min(weight_list)
@@ -249,6 +240,7 @@ class BOW_RAG(RAG):
         '''Return the given percentile value for the value list af a specified attribute.
         When 'as_threshhold' is true, the mean of the percentile value
         and the next value is returned.'''
+        
         weight_list = self.get_edge_weight_list(attr_label)
 
         index = round(len(weight_list)*(perc/100))
@@ -260,13 +252,11 @@ class BOW_RAG(RAG):
             return weight_list[index]
 
 
-
     def basic_feature_space_array(self, attr_config, label=[], subset=None, exclude=()):
         '''Arange a specification of attributes into an array that contains
         one row per node. It serves as data points in feature space for clustering operations.
         Nodes are selectable via the 'subset' parameter
         and excludable via the 'exclude' parameter.'''
-
 
         if subset is None:
             subset = set(self.__iter__())
@@ -310,8 +300,7 @@ class BOW_RAG(RAG):
 
         con_matrix = self.produce_connectivity_matrix((subset - exclude))
 
-        return BOW_RAG.fs_spec(fs_array, tuple(order_list), label, con_matrix)
-
+        return IPAG.feature_space(fs_array, tuple(order_list), label, con_matrix)
 
 #NOT UP TO DATE
 
@@ -341,11 +330,9 @@ class BOW_RAG(RAG):
         return return_list
 
 
-
     def hist_to_fs_array(self, attr_config, subset=None, label=[]):
         '''Arange a attribute that is itself a histogram into an array that contains
         one row per node. It serves as data points in feature space for clustering operations.'''
-
 
         if subset is None:
             subset = set(self.__iter__())
@@ -359,17 +346,17 @@ class BOW_RAG(RAG):
                 for attr, factor in attr_config.items():
                     if isinstance(self.node[node][attr], list):
                         for histogramm in self.node[node][attr]:
-                            if not isinstance(histogramm, hist):
-                                raise TypeError(f'Wrong type: {type(histogramm)} Must be "hist"!')
+                            if not isinstance(histogramm, Hist):
+                                raise TypeError(f'Wrong type: {type(histogramm)} Must be "Hist"!')
                             part = histogramm(mode='array', normalized=True)
                             part *= factor
                             row_array = np.append(row_array, part)
-                    elif isinstance(self.node[node][attr], hist):
+                    elif isinstance(self.node[node][attr], Hist):
                         part = self.node[node][attr](mode='array', normalized=True)
                         part *= factor
                         row_array = np.append(row_array, part)
                     else:
-                        raise TypeError(f'Wrong type: {type(self.node[node][attr])} Must be "hist"!')
+                        raise TypeError(f'Wrong type: {type(self.node[node][attr])} Must be "Hist"!')
 
                 array_list.append(row_array)
                 order_list.append(node)
@@ -378,18 +365,17 @@ class BOW_RAG(RAG):
 
         con_matrix = self.produce_connectivity_matrix(subset)
 
-        return BOW_RAG.fs_spec(fs_array, tuple(order_list), label, con_matrix)
+        return IPAG.feature_space(fs_array, tuple(order_list), label, con_matrix)
 
 
-
-    def clustering(self, attribute, algorithm, fs_spec, return_clust_obj=False, **cluster_kwargs):
+    def clustering(self, attribute, algorithm, feature_space, return_clust_obj=False, **cluster_kwargs):
         '''Perform any clustering operation from sklearn.cluster on a given feature space array
         (as returnd by 'get_feature_space_array()' or 'hist_to_fs_array()').
         Return the cluster label of each node as an attribute.'''
         
         #Assert all involved nodes have a list as the given attribute
         assertion_set = set()
-        for node in fs_spec.order:
+        for node in feature_space.order:
             assert(isinstance(self.node[node][attribute], list))
             assertion_set.add(len(self.node[node][attribute]))
         
@@ -398,36 +384,32 @@ class BOW_RAG(RAG):
 
         cluster_class = getattr(sklearn.cluster, algorithm)
 
-        if isinstance(fs_spec, BOW_RAG.fs_spec):
+        if isinstance(feature_space, IPAG.feature_space):
             cluster_obj = cluster_class(**cluster_kwargs)
-            cluster_obj.fit(fs_spec.array)
-            for node, label in zip(fs_spec.order, cluster_obj.labels_):
+            cluster_obj.fit(feature_space.array)
+            for node, label in zip(feature_space.order, cluster_obj.labels_):
                 #print(node, label)
                 #Make sure the clustered feature space and the node have the same label
                 if attribute in self.node[node]:
-                    assert(fs_spec.label == self.node[node][attribute])
+                    assert(feature_space.label == self.node[node][attribute])
                     self.node[node][attribute].append(str(label))
                 else:
                     self.node[node][attribute] = [str(label)]
 
-
-
             if return_clust_obj:
                 return cluster_obj
 
-
-        elif isinstance(fs_spec, list):
+        elif isinstance(feature_space, list):
             return_clust_obj=False
 
-            for fs in fs_spec:
-                self.clustering(attribute, algorithm, fs_spec, return_clust_obj, **cluster_kwargs)
+            for fs in feature_space:
+                self.clustering(attribute, algorithm, feature_space, return_clust_obj, **cluster_kwargs)
 
 
         else:
-            raise TypeError("Must be BOW_RAG.fs_spec!")
+            raise TypeError("Must be IPAG.feature_space!")
 
-
-    def cluster_affinity_attrs(self, attribute, algorithm, fs_spec, stretch=None, limit=None, centralize=1, **cluster_kwargs):
+    def cluster_affinity_attrs(self, attribute, algorithm, feature_space, stretch=None, limit=None, centralize=1, **cluster_kwargs):
         '''Perform a clustering operation using the clustering() method and store the affinity of the node to each cluster
         (the distance to each )'''
 
@@ -438,17 +420,16 @@ class BOW_RAG(RAG):
         elif not isinstance(stretch, tuple):
             raise TypeError("stretch must be tuple")
 
-        cluster_obj = self.clustering(attribute, algorithm, fs_spec, return_clust_obj=True, **cluster_kwargs)
+        cluster_obj = self.clustering(attribute, algorithm, feature_space, return_clust_obj=True, **cluster_kwargs)
 
         n_clusters = cluster_obj.cluster_centers_.shape[0]
 
-
         distances = []
-        for row, node in enumerate(fs_spec.order):
+        for row, node in enumerate(feature_space.order):
 
             self.node[node][attribute] = []
 
-            node_vector = fs_spec.array[row]
+            node_vector = feature_space.array[row]
 
             for cluster in range(n_clusters):
                 center_vector = cluster_obj.cluster_centers_[cluster, :]
@@ -460,8 +441,6 @@ class BOW_RAG(RAG):
 
         min_dist = min(distances)
         stretch_denom = max(distances) - min_dist
-
-
 
         for node in self.__iter__():
             for ix, affinity in enumerate(self.node[node][attribute]):
@@ -477,7 +456,7 @@ class BOW_RAG(RAG):
         ''' Transforms multifeature clusters to single feature clusters on the graph,
         and adds them to the layer list'''
         
-        if isinstance(fs, BOW_RAG.fs_spec):
+        if isinstance(fs, IPAG.feature_space):
             fs = [fs]
             
         processed = set() # Keep track which node has already been processed
@@ -493,6 +472,7 @@ class BOW_RAG(RAG):
     
     
     def isolate(self, node, clusters, processed, layer):
+        '''Helper function for IPAG.single_feature().'''
         # Node is processed and gets new cluster ID
         processed.add(node)
             
@@ -549,18 +529,16 @@ class BOW_RAG(RAG):
         return count
 
 
-
-
     @classmethod
     def old_init(cls, seg_img, tex_img, color_image, tex_bins, color_bins, **attr):
         '''Constructor of the first version of this class to ensure backwards compatibility.'''
 
         new_rag = cls(seg_img, **attr)
 
-        new_rag.add_attribute('tex', tex_img, hist, vbins=tex_bins)
+        new_rag.add_attribute('tex', tex_img, Hist, vbins=tex_bins)
         new_rag.normalize_attribute('tex')
 
-        new_rag.add_attribute('color', color_image, hist, bins=color_bins)
+        new_rag.add_attribute('color', color_image, Hist, bins=color_bins)
         new_rag.normalize_attribute('color')
 
         return new_rag
