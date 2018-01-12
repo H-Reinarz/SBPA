@@ -16,7 +16,7 @@ proc_bundle = namedtuple('ProcessingBundle', ['graph', 'attribute', 'attr_config
 
 #IN DEVELOPMENT
 
-class logic_stage(object):
+class LogicStage(object):
     '''generator class to recieve a bundle object representing a group
     of notes to process. Decision is made by applying threshholds to a
     set of metrics. It also serves as a base class for more specialized stages
@@ -30,11 +30,18 @@ class logic_stage(object):
         self.kwargs = kwargs
         
       
-    def set_successor_stages(self, true=None, false=None):
+    def set_successor_stages(self, successor_true=None, successor_false=None):
         '''Define the objects to forward the bundle to
         depending on the evaluation.'''
-        self.next_stage_true = true
-        self.next_stage_false = false
+        
+        if successor_true is not None:
+            assert(isinstance(successor_true, LogicStage))
+            
+        if successor_false is not None:
+            assert(isinstance(successor_false, LogicStage))
+            
+        self.next_stage_true = successor_true
+        self.next_stage_false = successor_false
 
     def evaluate(self, metric_dict):
         '''Perform the evaluation of a set of metrics
@@ -75,7 +82,7 @@ class logic_stage(object):
 
 
 
-class cluster_stage(logic_stage):
+class ClusterStage(LogicStage):
     '''Specialized stage that performs a specified clustering
     on the nodes in the recieved bundle.'''
     
@@ -95,7 +102,7 @@ class cluster_stage(logic_stage):
 
 
 
-class splitting_stage(logic_stage):
+class SplittingStage(LogicStage):
     '''Specialized stage to perform the splitting up of a clustered bundle of nodes
     into a new bundle for each cluster.'''
     
@@ -118,8 +125,30 @@ class splitting_stage(logic_stage):
     
     
     
+class LogigStageDict(dict):
+    '''Specialized dictionary to hold instances
+    of LogicStage to facilitate their usage.'''
+    
+    def link_stages(self, stage, successor_true=None, successor_false=None):
+        '''Wrapper around LogicState.set_successor_stages()
+        to work with keys.'''
+        
+        if successor_true is not None:
+            successor_true = self[successor_true]
+            
+        if successor_false is not None:
+            successor_false = self[successor_false]            
+        
+        self[stage].set_successor_stages(successor_true, successor_false)
 
-
+        
+    def initiate_stages(self):
+        '''Call all contained stage instances and
+        prepare them for recieving bundles.'''
+        
+        for stage in self.values():
+            next(stage())
+            
         
 
 def dynamic_clustering(graph, attr_config, attribute, metric_config, entry_point, hand_back):
