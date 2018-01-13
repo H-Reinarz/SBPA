@@ -63,6 +63,7 @@ class LogicStage(object):
             evaluation = False
             
             for metric, thresh in self.threshhold_dict.items():
+                if thresh is None: continue
                 if eval(f'{metric_dict[metric]} {thresh.operator} {thresh.value}'):
                     evaluation = True
                     
