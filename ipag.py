@@ -73,7 +73,7 @@ class IPAG(RAG):
 
             #Assign attributes to node
             self.node[node].update({'labels': [node],
-                                    'pixels': set(index_map[label_mask]),
+                                    'pixels': None, #set(index_map[label_mask]),
                                     'pixel_count': seg_img[label_mask].size})
 
     def mask(self, nodes):
@@ -112,38 +112,24 @@ class IPAG(RAG):
             self.node[node].update({name:attr_value})
 
 
-    def subgraph(self, nbunch):
-        """Return the subgraph induced on nodes in nbunch.
+    def subgraph(self, nodes):
+        """Return the subgraph induced on nodes in nodes list.
 
-        The induced subgraph of the graph contains the nodes in nbunch
+        The induced subgraph of the graph contains the nodes in node list
         and the edges between those nodes.
         Implemented in ipag to overwrite method of the base class
         """
-        bunch = self.nbunch_iter(nbunch)
-        # create new graph and copy subgraph into it
-        H = nx.Graph()
-        # copy node and attribute dictionaries
-        for n in bunch:
-            H.node[n] = self.node[n]
-        # namespace shortcuts for speed
-        H_adj = H.adj
-        self_adj = self.adj
-        # add nodes and edges (undirected method)
-        for n in H.node:
-            Hnbrs = H.adjlist_dict_factory()
-            H_adj[n] = Hnbrs
-            for nbr, d in self_adj[n].items():
-                if nbr in H_adj:
-                    # add both representations of edge: n-nbr and nbr-n
-                    Hnbrs[nbr] = d
-                    H_adj[nbr][n] = d
-        H.graph = self.graph
-        return H
+        induced_nodes = nx.filters.show_nodes(self.nbunch_iter(nodes))
+        SubGraph = nx.graphviews.SubGraph
+        # if already a subgraph, don't make a chain
+        if hasattr(self, '_NODE_OK'):
+            return SubGraph(self._graph, induced_nodes, self._EDGE_OK)
+        return SubGraph(self, induced_nodes)
 
 
     def produce_connectivity_matrix(self, subset, weight=None):
         '''Return a connectivity matrix of a subset of nodes.'''
-        sub_graph = self.subgraph(nbunch=list(set(subset)))
+        sub_graph = self.subgraph(nodes=list(set(subset)))
         connectivity = nx.adjacency_matrix(sub_graph, weight)
 
         return connectivity
@@ -373,14 +359,14 @@ class IPAG(RAG):
         (as returnd by 'get_feature_space_array()' or 'hist_to_fs_array()').
         Return the cluster label of each node as an attribute.'''
         
-        #Assert all involved nodes have a list as the given attribute
-        assertion_set = set()
-        for node in feature_space.order:
-            assert(isinstance(self.node[node][attribute], list))
-            assertion_set.add(len(self.node[node][attribute]))
-        
-        #Assert all nodes have the same number of cluster layers
-        assert(len(assertion_set) == 1)
+#        #Assert all involved nodes have a list as the given attribute
+#        assertion_set = set()
+#        for node in feature_space.order:
+#            assert(isinstance(self.node[node][attribute], list))
+#            assertion_set.add(len(self.node[node][attribute]))
+#
+#        #Assert all nodes have the same number of cluster layers
+#        assert(len(assertion_set) == 1)
 
         cluster_class = getattr(sklearn.cluster, algorithm)
 

@@ -5,7 +5,7 @@ Created on Thu Nov  9 22:30:53 2017
 @author: Jannik
 """
 
-from .sbpa_utils import value_to_value
+from .sbpa_utils import value_to_value, image_from_array, normalize_image
 import numpy as np
 from skimage.util import img_as_float
 import copy
@@ -84,7 +84,7 @@ def make_rgb_indices(img, normalize = True, zeros = 1):
     
     if normalize:
         for key, value in rgbi_dict.items():
-            rgbi_dict[key] = u.normalize_image(rgbi_dict[key])
+            rgbi_dict[key] = normalize_image(rgbi_dict[key])
     
     rgbi = type("rgbi", (), rgbi_dict)
     p = rgbi()
@@ -109,7 +109,7 @@ def make_pca(di, image, components = 3):
     dimDict = {}
     
     for i in range(0,components):
-        dimDict["dim"+str(i+1)] = u.NormalizeImage(u.ImageFromArray(pca_reduced[:,i], image))
+        dimDict["dim"+str(i+1)] = normalize_image(image_from_array(pca_reduced[:,i], (image.shape[0], image.shape[1], 1)))
     
     comp = type("components", (), dimDict)
     p = comp()

@@ -113,7 +113,7 @@ class SplittingStage(LogicStage):
     
     def react_to_false(self, bundle):
         '''Specialized stage to split a bundle.
-        Envokes BOW_RAG.attribute_divided_fs_arrays().'''
+        Envokes IPAG.attribute_divided_fs_arrays().'''
         if 'bundle_list' not in self.kwargs or not isinstance(self.kwargs['bundle_list'], list):
             raise ValueError('Object needs a list to append!')
         
@@ -130,7 +130,7 @@ class SplittingStage(LogicStage):
     
     
     
-class LogigStageDict(dict):
+class LogicStageDict(dict):
     '''Specialized dictionary to hold instances
     of LogicStage to facilitate their usage.'''
     
@@ -175,7 +175,7 @@ def dynamic_clustering(graph, attr_config, attribute, metric_config, entry_point
     bundle_list.append(start_bundle)
     
     for bundle in bundle_list:
-        entry_point.send(bundle)
+        entry_point.socket.send(bundle)
 
 
     
