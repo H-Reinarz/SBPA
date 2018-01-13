@@ -14,10 +14,22 @@ threshhold = namedtuple('threshhold', ['value', 'operator'])
 
 proc_bundle = namedtuple('ProcessingBundle', ['graph', 'attribute', 'attr_config', 'feature_space', 'metric_dict'])
 
-#IN DEVELOPMENT
+def logic_stage_generator(logic_stage):
+    '''Generator definition for LogicStage.'''
+    while True:
+        bundle = yield
+        
+        assert(isinstance(bundle, proc_bundle))
+                
+        if logic_stage.evaluate(bundle.metric_dict):
+            logic_stage.react_to_true(bundle)
+        else:
+            logic_stage.react_to_false(bundle)
+
+    
 
 class LogicStage(object):
-    '''generator class to recieve a bundle object representing a group
+    '''Class to recieve a bundle object representing a group
     of notes to process. Decision is made by applying threshholds to a
     set of metrics. It also serves as a base class for more specialized stages
     in the same workflow.'''
@@ -28,6 +40,7 @@ class LogicStage(object):
         self.next_stage_true = None
         self.next_stage_false = None
         self.kwargs = kwargs
+        self.socket = None
         
       
     def set_successor_stages(self, successor_true=None, successor_false=None):
@@ -69,16 +82,8 @@ class LogicStage(object):
         
     def __call__(self):
         '''Starts the generator for the class functionality.'''
-        while True:
-            bundle = yield
-            
-            assert(isinstance(bundle, proc_bundle))
-                    
-            if self.evaluate(bundle.metric_dict):
-                self.react_to_true(bundle)
-            else:
-                self.react_to_false(bundle)
-                
+        self.socket = logic_stage_generator(self)
+        next(self.socket)
 
 
 
@@ -147,7 +152,8 @@ class LogigStageDict(dict):
         prepare them for recieving bundles.'''
         
         for stage in self.values():
-            next(stage())
+            stage()
+            next(stage.socket)
             
         
 
