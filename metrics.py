@@ -1,6 +1,9 @@
 from .ipag import IPAG
+from collections import namedtuple
 
-def fs_variance(fs):
+metric = namedtuple('metric', ['func', 'kwargs'])
+
+def fs_variance(graph, fs):
     ''' Computes variance for complete feature_space. Variance of every
     feature divided by number of features. '''
     
@@ -33,8 +36,21 @@ def cmp_variance(fs, original_var, limit_percent):
 
 
 		
-def count_pixel(g, fs, pixel_min=0, invert=False):
+def count_pixel(graph, fs):
     '''Counts pixel of a feature_space'''
+    
+    if not isinstance(fs, IPAG.feature_space):
+        raise TypeError("Must be IPAG.fs_spec!")
+    pixel_sum = 0
+
+    for nodes in fs.order:
+        pixel_sum += graph.node[nodes]['pixel_count']
+            
+    return pixel_sum
+	
+
+def old_count_pixel(g, fs, pixel_min=0, invert=False):
+    '''Counts pixel of a feature_space list. Returns a dictionairy'''
     
     if isinstance(fs, IPAG.feature_space):
         fs = [fs]
@@ -49,36 +65,46 @@ def count_pixel(g, fs, pixel_min=0, invert=False):
     else:
         clusterDict = {k: v for k, v in clusterDict.items() if v < pixel_min}
     return clusterDict
-	
 
 
-def count_multi_features(rag, fs, layer):
+def count_multi_features(graph, fs, attribute):
     '''Counts features (non continues cluster patches) of multifeature clusters'''
     
     if not isinstance(fs, IPAG.feature_space):
         raise TypeError("Must be IPAG.feature_space!")
-        
-    processed = set() # Keep track which node has already been processed
     
-    isolateNodes = 0
-    
+    attr_check = 0
     for node in fs.order:
-        if node in processed:
-            continue
-        # Isolate current node
-        count_isolate(rag, node, processed, layer)
-        isolateNodes += 1
+        if attribute in graph.node[node]:
+            attr_check += 1
     
-    return isolateNodes
+    if attr_check == len(fs.order):    
+        processed = set() # Keep track which node has already been processed
+        
+        isolateNodes = 0
+        
+        for node in fs.order:
+            if node in processed:
+                continue
+            # Isolate current node
+            count_isolate(graph, node, processed, attribute)
+            isolateNodes += 1
+        
+        return isolateNodes
 
-
-def count_isolate(rag, node, processed, layer):
+    elif attr_check == 0:
+        return 1
+    
+    else:
+        raise AttributeError(f'Not all nodes have the attribute {attribute}')
+        
+def count_isolate(graph, node, processed, attribute):
     '''Helper Function of count_multi_features'''
     
     # Node is processed and gets new cluster ID
     processed.add(node)
         
     # Do the same for all neighbors with the same previous cluster
-    for neighbour in rag.neighbors_iter(node):
-        if (rag.node[node][layer] == rag.node[neighbour][layer]) and neighbour not in processed:
-            count_isolate(rag, neighbour, processed, layer)   
+    for neighbour in graph.neighbors(node):
+        if (graph.node[node][attribute] == graph.node[neighbour][attribute]) and neighbour not in processed:
+            count_isolate(graph, neighbour, processed, attribute)   

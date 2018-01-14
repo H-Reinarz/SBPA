@@ -12,7 +12,8 @@ from collections import namedtuple
 
 threshhold = namedtuple('threshhold', ['value', 'operator'])
 
-proc_bundle = namedtuple('ProcessingBundle', ['graph', 'attribute', 'attr_config', 'feature_space', 'metric_dict'])
+proc_bundle = namedtuple('ProcessingBundle', ['graph', 'attribute', 'attr_config',
+                                              'metric_config', 'feature_space', 'metric_dict'])
 
 def logic_stage_generator(logic_stage):
     '''Generator definition for LogicStage.'''
@@ -74,12 +75,12 @@ class LogicStage(object):
     def react_to_true(self, bundle):
         '''Action if evaluate() returns True.'''
         if self.next_stage_true is not None:
-            self.next_stage_true.send(bundle)
+            self.next_stage_true.socket.send(bundle)
     
     def react_to_false(self, bundle):
         '''Action if evaluate() returns False.'''
         if self.next_stage_false is not None:
-            self.next_stage_false.send(bundle)
+            self.next_stage_false.socket.send(bundle)
         
     def __call__(self):
         '''Starts the generator for the class functionality.'''
@@ -96,14 +97,16 @@ class ClusterStage(LogicStage):
         '''Specialized reaction peforming the clustering.'''
         cluster_kwargs = dict(self.kwargs)
         
-        for kwarg in ('algorithm'):
-            del cluster_kwargs[kwarg]
+        
+        del cluster_kwargs['algorithm']
+        
+        print(f'Doing {self.kwargs["algorithm"]} on {bundle.feature_space.label}')
             
         bundle.graph.clustering(bundle.attribute, self.kwargs['algorithm'],
                                 bundle.feature_space, **cluster_kwargs)
         
         if self.next_stage_true is not None:
-            self.next_stage_true.send(bundle)
+            self.next_stage_true.socket.send(bundle)
 
 
 
@@ -118,6 +121,8 @@ class SplittingStage(LogicStage):
         if 'bundle_list' not in self.kwargs or not isinstance(self.kwargs['bundle_list'], list):
             raise ValueError('Object needs a list to append!')
         
+        print(f'Splitting {bundle.feature_space.label}')
+        
         new_fs_list = bundle.graph.attribute_divided_fs_arrays(bundle.attr_config,
                                                                bundle.attribute,
                                                                subset=bundle.feature_space.order)
@@ -125,7 +130,8 @@ class SplittingStage(LogicStage):
         for fs in new_fs_list:
             metrics = bundle.graph.apply_group_metrics(fs, bundle.metric_config)
             
-            new_bundle = proc_bundle(bundle.graph, bundle.attribute, bundle.attr_config, fs, metrics)
+            new_bundle = proc_bundle(bundle.graph, bundle.attribute, bundle.attr_config,
+                                     bundle.metric_config, fs, metrics)
             
             self.kwargs['bundle_list'].append(new_bundle)
     
@@ -154,7 +160,7 @@ class LogicStageDict(dict):
         
         for stage in self.values():
             stage()
-            next(stage.socket)
+
             
         
 
@@ -171,11 +177,12 @@ def dynamic_clustering(graph, attr_config, attribute, metric_config, entry_point
     
     metrics = graph.apply_group_metrics(start_fs, metric_config)
     
-    start_bundle = proc_bundle(graph, attribute, start_fs, metrics)
+    start_bundle = proc_bundle(graph, attribute, attr_config, metric_config, start_fs, metrics)
     
     bundle_list.append(start_bundle)
     
     for bundle in bundle_list:
+        print(f'Sending bundle: {bundle.feature_space.label}')
         entry_point.socket.send(bundle)
 
 

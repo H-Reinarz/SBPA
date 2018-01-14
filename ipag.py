@@ -180,7 +180,8 @@ class IPAG(RAG):
     def delete_attribute(self, attribute):
         '''Delete a given attribute.'''
         for node in self.__iter__():
-            del self.node[node][attribute]
+            if attribute in self.node[node]:
+                del self.node[node][attribute]
 
 
     def filter_by_attribute(self, attribute, values, subset=None):
@@ -304,7 +305,7 @@ class IPAG(RAG):
             else:
                 self.node[node][temp_attr] = '-'.join(self.node[node][div_attr])
 
-        div_attr_labels = {self.node[node][temp_attr] for node in self.__iter__()}
+        div_attr_labels = {self.node[node][temp_attr] for node in subset}
 
         for label in div_attr_labels:
             nodes = self.filter_by_attribute(temp_attr, {label}, subset)
@@ -368,6 +369,9 @@ class IPAG(RAG):
 #        #Assert all nodes have the same number of cluster layers
 #        assert(len(assertion_set) == 1)
 
+        if algorithm == 'AgglomerativeClustering':
+            cluster_kwargs['connectivity'] = feature_space.connectivity
+        
         cluster_class = getattr(sklearn.cluster, algorithm)
 
         if isinstance(feature_space, IPAG.feature_space):
@@ -474,8 +478,8 @@ class IPAG(RAG):
         '''IN DEVELOPMENT'''
         metric_dict = dict.fromkeys(metric_config)
 
-        for metric, function in metric_config.items():
-            metric_dict[metric] = function(self, fs)
+        for name, metric in metric_config.items():
+            metric_dict[name] = metric.func(self, fs, **metric.kwargs)
 
         return metric_dict
 
