@@ -108,3 +108,6 @@ def count_isolate(graph, node, processed, attribute):
     for neighbour in graph.neighbors(node):
         if (graph.node[node][attribute] == graph.node[neighbour][attribute]) and neighbour not in processed:
             count_isolate(graph, neighbour, processed, attribute)   
+            
+def count_superpixel(graph, fs):
+    return len(fs.order)
