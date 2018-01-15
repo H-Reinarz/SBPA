@@ -129,6 +129,7 @@ class SplittingStage(LogicStage):
         
         for fs in new_fs_list:
             metrics = bundle.graph.apply_group_metrics(fs, bundle.metric_config)
+            print(metrics)
             
             new_bundle = proc_bundle(bundle.graph, bundle.attribute, bundle.attr_config,
                                      bundle.metric_config, fs, metrics)
