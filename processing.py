@@ -26,7 +26,6 @@ def logic_stage_generator(logic_stage):
             logic_stage.react_to_true(bundle)
         else:
             logic_stage.react_to_false(bundle)
-
     
 
 class LogicStage(object):
@@ -75,11 +74,13 @@ class LogicStage(object):
         
     def react_to_true(self, bundle):
         '''Action if evaluate() returns True.'''
+        print("Reacts to True")
         if self.next_stage_true is not None:
             self.next_stage_true.socket.send(bundle)
     
     def react_to_false(self, bundle):
         '''Action if evaluate() returns False.'''
+        print("Reacts to False")
         if self.next_stage_false is not None:
             self.next_stage_false.socket.send(bundle)
         
