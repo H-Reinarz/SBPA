@@ -442,7 +442,7 @@ class IPAG(RAG):
                 self.node[node][attribute][ix] = affinity
 
 
-    def single_feature(self, fs, layer):
+    def isolate(self, fs, layer):
         ''' Transforms multifeature clusters to single feature clusters on the graph,
         and adds them to the layer list'''
         
@@ -456,11 +456,11 @@ class IPAG(RAG):
             if node in processed:
                 continue
             # Isolate current node
-            self.isolate(self, node, cluster, processed, layer)
+            self.isolate_helper(self, node, cluster, processed, layer)
             cluster += 1
 
     
-    def isolate(self, node, clusters, processed, layer):
+    def isolate_helper(self, node, clusters, processed, layer):
         '''Helper function for IPAG.single_feature().'''
         # Node is processed and gets new cluster ID
         processed.add(node)
@@ -468,7 +468,7 @@ class IPAG(RAG):
         # Do the same for all neighbors with the same previous cluster
         for neighbour in self.neighbors_iter(node):
             if (self.node[node][layer] == self.node[neighbour][layer]) and neighbour not in processed:
-                self.isolate(self, neighbour, clusters, processed, layer)   
+                self.isolate_helper(self, neighbour, clusters, processed, layer)   
         
         self.node[node][layer].append(str(clusters))
     
