@@ -446,20 +446,19 @@ class IPAG(RAG):
         ''' Transforms multifeature clusters to single feature clusters on the graph,
         and adds them to the layer list'''
         
-        if isinstance(fs, IPAG.feature_space):
-            fs = [fs]
+        if not isinstance(fs, IPAG.feature_space):
+            raise TypeError("To Isolate Feature the input must be IPAG.feature_space!")
             
         processed = set() # Keep track which node has already been processed
         
-        for _fs in fs:
-            cluster = 0
-            for node in _fs.order:
-                if node in processed:
-                    continue
-                # Isolate current node
-                self.isolate(self, node, cluster, processed, layer)
-                cluster += 1
-    
+        cluster = 0
+        for node in fs.order:
+            if node in processed:
+                continue
+            # Isolate current node
+            self.isolate(self, node, cluster, processed, layer)
+            cluster += 1
+
     
     def isolate(self, node, clusters, processed, layer):
         '''Helper function for IPAG.single_feature().'''
