@@ -83,6 +83,5 @@ def one_to_three_channels(image, deepcopy = True):
     
     if deepcopy:
         image = np.copy(image)
-    return MergeChannels([image,image,image])
-    
+    return merge_channels([image,image,image])
     
