@@ -5,18 +5,29 @@ Created on Sat Jan  6 16:16:39 2018
 
 @author: hre070
 """
-
+import sys
 from collections import namedtuple
 
 
 
-threshhold = namedtuple('threshhold', ['value', 'operator'])
+threshhold = namedtuple('Threshhold', ['operator', 'value'])
 
 proc_bundle = namedtuple('ProcessingBundle', ['graph', 'attribute', 'attr_config',
                                               'metric_config', 'feature_space', 'metric_dict'])
 
+proc_error = namedtuple('ProcessingErrorEvent', ['type', 'value', 'traceback', 'bundle'])
+
+
+def record_processing_error(bundle):
+    '''Wrapper around sys.exc_info() to produce a ProcessingErrorEvent
+    namedtuple. Also takes the current bundle at the point the exception was raised.'''
+    return proc_error(*sys.exc_info(), bundle=bundle)
+
+
 def logic_stage_generator(logic_stage):
     '''Generator definition for LogicStage.'''
+    assert(isinstance(logic_stage, LogicStage))
+    
     while True:
         bundle = yield
         
@@ -26,7 +37,70 @@ def logic_stage_generator(logic_stage):
             logic_stage.react_to_true(bundle)
         else:
             logic_stage.react_to_false(bundle)
+
+
+def exception_recorder_generator(exc_recorder, notify, mode):
+    '''Generator definition for ExceptionRecorder'''
+    assert(isinstance(exc_recorder, ExceptionRecorder))
     
+    while True:
+        exception = yield
+        
+        #ASSERTION
+        
+        exc_recorder.records.append(exception)
+        if notify:
+            print()
+            
+        if mode == 'raise':
+            pass
+        
+        
+class ExceptionRecorder():
+    '''Class to record exceptions raised by specialized LogicStage
+    instances.'''
+    
+    def __init__(self, label=None):
+        
+        self.label= label
+        self.records = []
+        
+    def __len__(self):
+        return len(self.records)
+    
+    def __iter__(self):
+        yield from self.records
+        
+    def __getitem__(self, key):
+        return self.records[key]
+    
+    def __setitem__(self, key, value):
+        self.records[key] = value
+        
+    def print_entry(self, index):
+        '''Print Information for given entry.'''
+        pass
+    
+    def print_traceback(self, index):
+        '''Print full traceback for given entry.'''
+        pass
+
+    def print_full_report(self):
+        '''Print information for all entries.'''
+        for record in self:
+            self.print_entry(record)
+
+    def print_full_traceback(self):
+        '''Print traceback for all entries.'''
+        for record in self:
+            self.print_traceback(record)
+            
+    def __call__(self, notify=True, mode='record'):
+        '''Starts the generator for the class functionality.'''
+        self.socket = exception_recorder_generator(self, notify, mode)
+        next(self.socket)
+
+
 
 class LogicStage(object):
     '''Class to recieve a bundle object representing a group
@@ -56,6 +130,14 @@ class LogicStage(object):
             
         self.next_stage_true = successor_true
         self.next_stage_false = successor_false
+
+
+
+    def set_exception_recorder(self, recorder):
+        '''Setter for corresponding ExceptionRecorder instance.'''
+        self.exception_recorder = recorder
+
+
 
     def evaluate(self, metric_dict):
         '''Perform the evaluation of a set of metrics
@@ -95,8 +177,6 @@ class ClusterStage(LogicStage):
     '''Specialized stage that performs a specified clustering
     on the nodes in the recieved bundle.'''
 
-    def set_exception_recorder(recorder):
-        pass
     
     def react_to_true(self, bundle):
         '''Specialized reaction peforming the clustering.'''
@@ -114,6 +194,19 @@ class ClusterStage(LogicStage):
             self.next_stage_true.socket.send(bundle)
 
 
+class IsolateStage(LogicStage):
+    '''Specialized stage that splits apart the spatially isolated
+    parts of one cluster of nodes.'''
+    
+    def react_to_true(self, bundle):
+        '''Specialized reaction peforming the isolating.'''
+        
+        print(f'Isolating {bundle.feature_space.label}')
+            
+        bundle.graph.isolate(bundle.feature_space, layer=bundle.feature_space.label)
+        
+        if self.next_stage_true is not None:
+            self.next_stage_true.socket.send(bundle)
 
 
 
