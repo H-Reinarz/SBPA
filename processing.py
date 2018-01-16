@@ -42,6 +42,7 @@ class LogicStage(object):
         self.next_stage_false = None
         self.kwargs = kwargs
         self.socket = None
+        self.exception_recorder = None
         
       
     def set_successor_stages(self, successor_true=None, successor_false=None):
@@ -92,6 +93,9 @@ class LogicStage(object):
 class ClusterStage(LogicStage):
     '''Specialized stage that performs a specified clustering
     on the nodes in the recieved bundle.'''
+
+    def set_exception_recorder(recorder):
+        pass
     
     def react_to_true(self, bundle):
         '''Specialized reaction peforming the clustering.'''
@@ -107,6 +111,7 @@ class ClusterStage(LogicStage):
         
         if self.next_stage_true is not None:
             self.next_stage_true.socket.send(bundle)
+
 
 
 
@@ -127,14 +132,18 @@ class SplittingStage(LogicStage):
                                                                bundle.attribute,
                                                                subset=bundle.feature_space.order)
         
-        for fs in new_fs_list:
-            metrics = bundle.graph.apply_group_metrics(fs, bundle.metric_config)
-            print(metrics)
-            
-            new_bundle = proc_bundle(bundle.graph, bundle.attribute, bundle.attr_config,
-                                     bundle.metric_config, fs, metrics)
-            
-            self.kwargs['bundle_list'].append(new_bundle)
+        if len(new_fs_list) == 1:
+            self.react_to_true(bundle)
+        
+        else:
+            for fs in new_fs_list:
+                metrics = bundle.graph.apply_group_metrics(fs, bundle.metric_config)
+                print(metrics)
+                
+                new_bundle = proc_bundle(bundle.graph, bundle.attribute, bundle.attr_config,
+                                         bundle.metric_config, fs, metrics)
+                
+                self.kwargs['bundle_list'].append(new_bundle)
     
     
     
