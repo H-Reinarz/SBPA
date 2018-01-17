@@ -5,7 +5,7 @@ Created on Sat Jan  6 16:16:39 2018
 
 @author: hre070
 """
-import sys
+import sys, traceback
 from collections import namedtuple
 
 
@@ -15,13 +15,81 @@ threshhold = namedtuple('Threshhold', ['operator', 'value'])
 proc_bundle = namedtuple('ProcessingBundle', ['graph', 'attribute', 'attr_config',
                                               'metric_config', 'feature_space', 'metric_dict'])
 
-proc_error = namedtuple('ProcessingErrorEvent', ['type', 'value', 'traceback', 'bundle'])
+#proc_error = namedtuple('ProcessingErrorEvent', ['type', 'value', 'traceback', 'bundle'])
 
+def _raise(bundle, notify=True):
+    raise
 
-def record_processing_error(bundle):
-    '''Wrapper around sys.exc_info() to produce a ProcessingErrorEvent
-    namedtuple. Also takes the current bundle at the point the exception was raised.'''
-    return proc_error(*sys.exc_info(), bundle=bundle)
+class ProcessingErrorEvent():
+    '''Class storing all relevant information if an exception
+    is raised by a method of a LogicStage during processing.'''
+    def __init__(self, exc_type, value, traceback, context, bundle):
+        
+        self.type = exc_type
+        self.value = value
+        self.traceback = traceback
+        self.context = context
+        self.bundle = bundle
+        
+    
+    def __str__(self):
+        data = (self.type, self.value, self.context,
+                self.bundle.attribute, self.bundle.feature_space.label)
+        string = 'Error: {}\nMessage: {}\nContext: {}\nBundle: {} {}'.format(*data)
+        
+        return string
+    
+    def print_traceback(self):
+        '''Print the instances traceback.'''
+        traceback.print_tb(self.traceback, file=sys.stdout)
+        
+
+class ExceptionRecorder(list):
+    '''Class to record exceptions raised by specialized LogicStage
+    instances.'''
+    
+    def __init__(self, label=None, notify=True):
+        super().__init__()
+        
+        self.label= label
+        self.raise_types = {}
+        self.notify = notify
+
+    def print_traceback(self, index):
+        '''Print full traceback for given entry.'''
+        self[index].print_traceback()
+
+    def print_full_report(self):
+        '''Print information for all entries.'''
+        
+        for record in self:
+           print(record)
+           print('\n')
+
+    def print_full_traceback(self):
+        '''Print traceback for all entries.'''
+        for record in self:
+            record.print_traceback()
+            print('\n')
+            
+    def __call__(self, bundle, context=''):
+        '''Wrapper around sys.exc_info() to produce a ProcessingErrorEvent
+        namedtuple. Also takes the current bundle at the point the exception was raised.'''
+        catched = ProcessingErrorEvent(*sys.exc_info(), context, bundle=bundle)
+
+        self.append(catched)
+        
+        if self.notify:
+            print('Recorded processing error:')            
+            print('-'*80)
+#            print('Recorded {} while processing bundle: {} {}\nMessage: {}'.format(
+#                    catched.type, catched.bundle.attribute, catched.bundle.feature_space.label, catched.value))
+            print(catched)
+            print('-'*80)            
+
+        if catched.type in self.raise_types:
+            raise
+
 
 
 def logic_stage_generator(logic_stage):
@@ -37,69 +105,7 @@ def logic_stage_generator(logic_stage):
             logic_stage.react_to_true(bundle)
         else:
             logic_stage.react_to_false(bundle)
-
-
-def exception_recorder_generator(exc_recorder, notify, mode):
-    '''Generator definition for ExceptionRecorder'''
-    assert(isinstance(exc_recorder, ExceptionRecorder))
-    
-    while True:
-        exception = yield
         
-        #ASSERTION
-        
-        exc_recorder.records.append(exception)
-        if notify:
-            print()
-            
-        if mode == 'raise':
-            pass
-        
-        
-class ExceptionRecorder():
-    '''Class to record exceptions raised by specialized LogicStage
-    instances.'''
-    
-    def __init__(self, label=None):
-        
-        self.label= label
-        self.records = []
-        
-    def __len__(self):
-        return len(self.records)
-    
-    def __iter__(self):
-        yield from self.records
-        
-    def __getitem__(self, key):
-        return self.records[key]
-    
-    def __setitem__(self, key, value):
-        self.records[key] = value
-        
-    def print_entry(self, index):
-        '''Print Information for given entry.'''
-        pass
-    
-    def print_traceback(self, index):
-        '''Print full traceback for given entry.'''
-        pass
-
-    def print_full_report(self):
-        '''Print information for all entries.'''
-        for record in self:
-            self.print_entry(record)
-
-    def print_full_traceback(self):
-        '''Print traceback for all entries.'''
-        for record in self:
-            self.print_traceback(record)
-            
-    def __call__(self, notify=True, mode='record'):
-        '''Starts the generator for the class functionality.'''
-        self.socket = exception_recorder_generator(self, notify, mode)
-        next(self.socket)
-
 
 
 class LogicStage(object):
@@ -108,14 +114,15 @@ class LogicStage(object):
     set of metrics. It also serves as a base class for more specialized stages
     in the same workflow.'''
     
-    def __init__(self, threshhold_dict=None, **kwargs):
+    def __init__(self, threshhold_dict=None, context='', **kwargs):
         
         self.threshhold_dict = threshhold_dict
+        self.context=''
         self.next_stage_true = None
         self.next_stage_false = None
         self.kwargs = kwargs
         self.socket = None
-        self.exception_recorder = None
+        self.exception_recorder = _raise
         
       
     def set_successor_stages(self, successor_true=None, successor_false=None):
@@ -133,7 +140,7 @@ class LogicStage(object):
 
 
 
-    def set_exception_recorder(self, recorder):
+    def set_exception_recorder(self, recorder=_raise):
         '''Setter for corresponding ExceptionRecorder instance.'''
         self.exception_recorder = recorder
 
@@ -291,5 +298,25 @@ def dynamic_clustering(graph, attr_config, attribute, metric_config, entry_point
 
 
     
+#Testing code    
+if __name__ == '__main__':
     
     
+    mock_fs = namedtuple('FS', ['label'])
+    
+    mock_bundle = proc_bundle('Graph', 'cluster', {'color':0.5}, {'size':'func'},
+                              mock_fs(['0','1','0']), {'size':42})
+    
+    er = ExceptionRecorder()
+    
+    try:
+        raise ValueError(42)
+    except:
+        er(mock_bundle)
+    
+    
+    try:
+        raise TimeoutError('bad luck')
+    except:
+        er(mock_bundle)
+
