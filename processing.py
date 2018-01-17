@@ -197,13 +197,13 @@ class ClusterStage(LogicStage):
 class IsolateStage(LogicStage):
     '''Specialized stage that splits apart the spatially isolated
     parts of one cluster of nodes.'''
-    
+
     def react_to_true(self, bundle):
         '''Specialized reaction peforming the isolating.'''
         
         print(f'Isolating {bundle.feature_space.label}')
             
-        bundle.graph.isolate(bundle.feature_space, layer=bundle.feature_space.label)
+        bundle.graph.isolate(bundle.feature_space, layer=bundle.attribute)
         
         if self.next_stage_true is not None:
             self.next_stage_true.socket.send(bundle)
@@ -226,8 +226,19 @@ class SplittingStage(LogicStage):
                                                                bundle.attribute,
                                                                subset=bundle.feature_space.order)
         
+        print(len(new_fs_list))
+        
         if len(new_fs_list) == 1:
-            self.react_to_true(bundle)
+            
+            metrics = bundle.graph.apply_group_metrics(new_fs_list[0], bundle.metric_config)
+            print(metrics)
+            
+            new_bundle = proc_bundle(bundle.graph, bundle.attribute, bundle.attr_config,
+                                     bundle.metric_config, new_fs_list[0], metrics)
+            
+            self.kwargs['bundle_list'].append(new_bundle)
+            
+            self.react_to_true(new_bundle)
         
         else:
             for fs in new_fs_list:
