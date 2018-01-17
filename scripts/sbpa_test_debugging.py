@@ -18,7 +18,7 @@ from SBPA.lbp import ni_lbp, radial_lbp, angular_lbp
 from SBPA.histogram import Hist
 from SBPA._LBP.lbp_bins import lbp_bins
 from SBPA.ipag import IPAG
-from SBPA.sbpa_utils import normalize_image
+from SBPA.sbpa_utils import normalize_image, pixel_per_cluster
 from SBPA.processing import *
 from SBPA.metrics import *
 
@@ -109,25 +109,41 @@ print(fs_metrics)
 # Processing
 stages = LogicStageDict()
 
-start_treshholds = {'pixel_size':threshhold(26000, '>='), "superpixel":threshhold(2, '>='),
-                    "fs_var":threshhold(fs_metrics["fs_var"] * 0.3, '>=')} # If FS greater than threshold
-stages['start'] = LogicStage(start_treshholds, algorithm='MeanShift')
+start_treshholds = {'pixel_size':threshhold('>=', 26000),
+                    "fs_var":threshhold('>=', fs_metrics["fs_var"] * 0.3)} # If FS greater than threshold
+stages['start'] = LogicStage(start_treshholds)
 
-kmeans_treshholds = {'pixel_size':threshhold(1692000//4, '>')} 
-stages['MeanShift'] = ClusterStage(start_treshholds, algorithm='MeanShift')
+superpixel_threshholds = {"superpixel":threshhold('>=', 2)}
+stages['superpixel_check'] = LogicStage(superpixel_threshholds)
 
-agglo_treshholds = {'pixel_size':threshhold(1692000//4, '<=')}
-stages['agglo'] = ClusterStage(start_treshholds, algorithm='AgglomerativClustering', n_clusters=2)
+kmeans_treshholds = {'pixel_size':threshhold('>', 1692000//4)} 
+stages['MeanShift'] = ClusterStage(kmeans_treshholds, algorithm='MeanShift')
+
+agglo_treshholds = {'pixel_size':threshhold('<=', 1692000//4)}
+stages['agglo'] = ClusterStage(agglo_treshholds, algorithm='AgglomerativeClustering', n_clusters=2)
+
+agglo2_treshholds = {'pixel_size':threshhold('>=', 0)}
+stages['agglo2'] = ClusterStage(agglo2_treshholds, algorithm='AgglomerativeClustering', n_clusters=2)
 
 stages['split'] = SplittingStage()
 
+stages['continue'] = LogicStage({})
+
+#stages['isolate'] = IsolateStage()
+
 # Linked Stage list
 # After every stage start with entry_point again
-stages.link_stages('start', 'MeanShift') #(stage, if true do kmeans, if false stop)
+stages.link_stages('start', 'superpixel_check') #(stage, if true do kmeans, if false stop)
+stages.link_stages('superpixel_check', 'MeanShift')
 stages.link_stages('MeanShift', 'split', 'agglo') #(stage, if true do split, if false do agglo)
 stages.link_stages('agglo', 'split') #(stage, if true do split, if false do nothing)
+#stages.link_stages('isolate', 'split')
+stages.link_stages('agglo2', 'continue')
+stages.link_stages('continue', 'split', 'split')
+stages.link_stages('split', 'agglo2')
 
 stages.initiate_stages()
+
 
 print('Start dynamic clustering:')
 dynamic_clustering(Graph, fs_attrs, attribute, metric_config, stages['start'], stages['split'])
