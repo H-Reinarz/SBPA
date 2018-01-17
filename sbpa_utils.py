@@ -84,4 +84,13 @@ def one_to_three_channels(image, deepcopy = True):
     if deepcopy:
         image = np.copy(image)
     return merge_channels([image,image,image])
+
+def pixel_per_cluster(graph, attribute):
+    clusterDict = {}
+    for node in graph:
+        if '-'.join(str(layer) for layer in graph.node[node][attribute]) in clusterDict:
+            clusterDict['-'.join(str(layer) for layer in graph.node[node][attribute])] += graph.node[node]['pixel_count']
+        else:
+            clusterDict['-'.join(str(layer) for layer in graph.node[node][attribute])] = graph.node[node]['pixel_count']
+    return clusterDict
     
