@@ -381,6 +381,7 @@ class IPAG(RAG):
                 #print(node, label)
                 #Make sure the clustered feature space and the node have the same label
                 if attribute in self.node[node]:
+                    #print(feature_space.label, " == ", self.node[node][attribute])
                     assert(feature_space.label == self.node[node][attribute])
                     self.node[node][attribute].append(str(label))
                 else:
