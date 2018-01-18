@@ -132,7 +132,7 @@ class LogicStage(object):
     set of metrics. It also serves as a base class for more specialized stages
     in the same workflow.'''
     
-    def __init__(self, threshhold_dict=None, descr=None, **kwargs):
+    def __init__(self, final_stage, threshhold_dict=None, descr=None, **kwargs):
         
         self.threshhold_dict = threshhold_dict
         
@@ -143,6 +143,9 @@ class LogicStage(object):
             
         self.next_stage_true = None
         self.next_stage_false = None
+        self.queue_true = []
+        self.queue_false = []
+        self.final_stage = final_stage
         self.kwargs = kwargs
         self.socket = None
         self.exception_recorder = _raise
@@ -183,7 +186,7 @@ class LogicStage(object):
                         
                 return evaluation
             else:
-                return False
+                return True
         except:
             self.exception_recorder(bundle=None, context='Error in evaluate() of '+self.descr)
 
@@ -192,7 +195,10 @@ class LogicStage(object):
         print("Reacts to True")
         try:
             if self.next_stage_true is not None:
-                self.next_stage_true.socket.send(bundle)
+                if self.final_stage:
+                    self.next_stage_true.queue_true.append((True, bundle, self.descr))
+                else:
+                    self.next_stage_true.socket.send(bundle)
         except:
             self.exception_recorder(bundle, context='Error in react_to_true() of '+self.descr)
 
@@ -201,7 +207,10 @@ class LogicStage(object):
         print("Reacts to False")
         try:
             if self.next_stage_false is not None:
-                self.next_stage_false.socket.send(bundle)
+                if self.final_stage:
+                    self.next_stage_false.queue_false.append((False, bundle, self.descr))
+                else:
+                    self.next_stage_false.socket.send(bundle)
         except:
             self.exception_recorder(bundle, context='Error in react_to_false() of '+self.descr)
             
@@ -269,12 +278,10 @@ class SplittingStage(LogicStage):
     '''Specialized stage to perform the splitting up of a clustered bundle of nodes
     into a new bundle for each cluster.'''
     
-    def react_to_false(self, bundle):
+    def react_to_true(self, bundle):
         '''Specialized stage to split a bundle.
         Envokes IPAG.attribute_divided_fs_arrays().'''
 
-        if 'bundle_list' not in self.kwargs or not isinstance(self.kwargs['bundle_list'], list):
-            raise ValueError('Object needs a list to append!')
         
         print(f'Splitting {bundle.feature_space.label}')
         
@@ -293,7 +300,7 @@ class SplittingStage(LogicStage):
                 new_bundle = proc_bundle(bundle.graph, bundle.attribute, bundle.attr_config,
                                          bundle.metric_config, new_fs_list[0], bundle.metric_dict)            
     
-                self.react_to_true(new_bundle)
+                self.react_to_false(new_bundle)
     
             else:
                 for fs in new_fs_list:
@@ -303,14 +310,19 @@ class SplittingStage(LogicStage):
                     new_bundle = proc_bundle(bundle.graph, bundle.attribute, bundle.attr_config,
                                              bundle.metric_config, fs, metrics)
     
-                    self.kwargs['bundle_list'].append(new_bundle)
+                    if self.next_stage_true is not None:
+                        if self.final_stage:
+                            self.next_stage_true.queue_true.append((True, new_bundle, self.descr))
+                        else:
+                            self.next_stage_true.socket.send(bundle)
+
         except:
             self.exception_recorder(bundle,
                                     context='Processing of splitting output failed in '+self.descr)
             
                 
 
-class LogicStageDict(dict):
+class DynamicClustering(dict):
     '''Specialized dictionary to hold instances
     of LogicStage to facilitate their usage.'''
     
@@ -342,7 +354,41 @@ class LogicStageDict(dict):
         
         for stage in self.values():
             stage.set_exception_recorder(exc_recorder)
+            
+    def bundle_queue(self):
+        '''Providing the enqueued bundles sequentially
+        prioritizing the ones coming from react_to_false().'''
         
+        for name, stage in self.items():
+           for element in stage.queue_false:
+               yield (name, element)
+
+        for name, stage in self.items():
+           for element in stage.queue_true:
+               yield (name, element)
+        
+
+    def __call__(self, graph, attr_config, attribute, metric_config, start_point):
+        '''Conduct the dynamic clustering process.'''
+
+        start_fs = graph.basic_feature_space_array(attr_config)
+        
+        metrics = graph.apply_group_metrics(start_fs, metric_config)
+        
+        start_bundle = proc_bundle(graph, attribute, attr_config, metric_config, start_fs, metrics)
+        
+        self[start_point].queue_true.append((True, start_bundle, '<START LOOP>'))
+        
+        for entry_point, element in self.bundle_queue():
+            flag, bundle, sender = element
+            print(f'Sending bundle {bundle.attribute} {bundle.feature_space.label} to {entry_point} from {sender} reacting to {flag}')
+            self[entry_point].socket.send(element[1])
+
+        
+
+
+
+
 
 def dynamic_clustering(graph, attr_config, attribute, metric_config, entry_point, hand_back):
     '''Function to start a processing workflow involving a network of logic stages.
