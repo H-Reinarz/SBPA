@@ -17,7 +17,13 @@ proc_bundle = namedtuple('ProcessingBundle', ['graph', 'attribute', 'attr_config
 
 #proc_error = namedtuple('ProcessingErrorEvent', ['type', 'value', 'traceback', 'bundle'])
 
-def _raise(bundle, notify=True):
+def _raise(bundle=None, context=''):
+    if bundle is not None:
+        data = (context, bundle.attribute, bundle.feature_space.label)
+        print('Context: {}\nBundle: {} {}'.format(*data))
+    else:
+        print('Context: '+context)
+        
     raise
 
 class ProcessingErrorEvent():
@@ -33,14 +39,19 @@ class ProcessingErrorEvent():
         
     
     def __str__(self):
-        data = (self.type, self.value, self.context,
-                self.bundle.attribute, self.bundle.feature_space.label)
-        string = 'Error: {}\nMessage: {}\nContext: {}\nBundle: {} {}'.format(*data)
-        
+        if self.bundle is not None:
+            data = (self.type, self.value, self.context,
+                    self.bundle.attribute, self.bundle.feature_space.label)
+            string = 'Error: {}\nMessage: {}\nContext: {}\nBundle: {} {}'.format(*data)
+        else:
+            data = (self.type, self.value, self.context)
+            string = 'Error: {}\nMessage: {}\nContext: {}'.format(*data)
+                    
         return string
     
     def print_traceback(self):
         '''Print the instances traceback.'''
+        print(self.__str__()+'\nTraceback:')
         traceback.print_tb(self.traceback, file=sys.stdout)
         
 
@@ -48,12 +59,13 @@ class ExceptionRecorder(list):
     '''Class to record exceptions raised by specialized LogicStage
     instances.'''
     
-    def __init__(self, label=None, notify=True):
+    def __init__(self, label, notify=True):
         super().__init__()
         
-        self.label= label
+        self.label = label
         self.raise_types = {}
         self.notify = notify
+        self.raise_none_bundle_errors=True
 
     def print_traceback(self, index):
         '''Print full traceback for given entry.'''
@@ -61,18 +73,24 @@ class ExceptionRecorder(list):
 
     def print_full_report(self):
         '''Print information for all entries.'''
-        
+        print('Full report of '+self.label)
+        print('-'*80)
         for record in self:
            print(record)
            print('\n')
-
+        print('-'*80)
+        
     def print_full_traceback(self):
         '''Print traceback for all entries.'''
+        print('Full traceback of '+self.label)
+        print('-'*80)
         for record in self:
             record.print_traceback()
             print('\n')
+        print('-'*80)
+
             
-    def __call__(self, bundle, context=''):
+    def __call__(self, bundle=None, context=''):
         '''Wrapper around sys.exc_info() to produce a ProcessingErrorEvent
         namedtuple. Also takes the current bundle at the point the exception was raised.'''
         catched = ProcessingErrorEvent(*sys.exc_info(), context, bundle=bundle)
@@ -82,14 +100,14 @@ class ExceptionRecorder(list):
         if self.notify:
             print('Recorded processing error:')            
             print('-'*80)
-#            print('Recorded {} while processing bundle: {} {}\nMessage: {}'.format(
-#                    catched.type, catched.bundle.attribute, catched.bundle.feature_space.label, catched.value))
             print(catched)
             print('-'*80)            
 
         if catched.type in self.raise_types:
             raise
 
+        if bundle is None and self.raise_none_bundle_errors:
+            raise
 
 
 def logic_stage_generator(logic_stage):
@@ -114,10 +132,15 @@ class LogicStage(object):
     set of metrics. It also serves as a base class for more specialized stages
     in the same workflow.'''
     
-    def __init__(self, threshhold_dict=None, context='', **kwargs):
+    def __init__(self, threshhold_dict=None, descr=None, **kwargs):
         
         self.threshhold_dict = threshhold_dict
-        self.context=''
+        
+        if descr is not None:
+            self.descr = descr
+        else:
+            self.descr = self.__repr__()
+            
         self.next_stage_true = None
         self.next_stage_false = None
         self.kwargs = kwargs
@@ -149,34 +172,46 @@ class LogicStage(object):
     def evaluate(self, metric_dict):
         '''Perform the evaluation of a set of metrics
         with the instances threshholds.'''
-        if self.threshhold_dict is not None:
-            evaluation = False
-            
-            for metric, thresh in self.threshhold_dict.items():
-                if thresh is None: continue
-                if eval(f'{metric_dict[metric]} {thresh.operator} {thresh.value}'):
-                    evaluation = True
-                    
-            return evaluation
-        else:
-            return False
-        
+        try:
+            if self.threshhold_dict is not None:
+                evaluation = False
+                
+                for metric, thresh in self.threshhold_dict.items():
+                    if thresh is None: continue
+                    if eval(f'{metric_dict[metric]} {thresh.operator} {thresh.value}'):
+                        evaluation = True
+                        
+                return evaluation
+            else:
+                return False
+        except:
+            self.exception_recorder(bundle=None, context='Error in evaluate() of '+self.descr)
+
     def react_to_true(self, bundle):
         '''Action if evaluate() returns True.'''
         print("Reacts to True")
-        if self.next_stage_true is not None:
-            self.next_stage_true.socket.send(bundle)
-    
+        try:
+            if self.next_stage_true is not None:
+                self.next_stage_true.socket.send(bundle)
+        except:
+            self.exception_recorder(bundle, context='Error in react_to_true() of '+self.descr)
+
     def react_to_false(self, bundle):
         '''Action if evaluate() returns False.'''
         print("Reacts to False")
-        if self.next_stage_false is not None:
-            self.next_stage_false.socket.send(bundle)
-        
+        try:
+            if self.next_stage_false is not None:
+                self.next_stage_false.socket.send(bundle)
+        except:
+            self.exception_recorder(bundle, context='Error in react_to_false() of '+self.descr)
+            
     def __call__(self):
         '''Starts the generator for the class functionality.'''
-        self.socket = logic_stage_generator(self)
-        next(self.socket)
+        try:
+            self.socket = logic_stage_generator(self)
+            next(self.socket)
+        except:
+            self.exception_recorder(context='Error while initiating '+self.descr)
 
 
 
@@ -193,12 +228,19 @@ class ClusterStage(LogicStage):
         del cluster_kwargs['algorithm']
         
         print(f'Doing {self.kwargs["algorithm"]} on {bundle.feature_space.label}')
-            
-        bundle.graph.clustering(bundle.attribute, self.kwargs['algorithm'],
-                                bundle.feature_space, **cluster_kwargs)
         
-        if self.next_stage_true is not None:
-            self.next_stage_true.socket.send(bundle)
+        try:
+            bundle.graph.clustering(bundle.attribute, self.kwargs['algorithm'],
+                                    bundle.feature_space, **cluster_kwargs)
+        except:
+            self.exception_recorder(bundle, context='Error while clustering in '+self.descr)
+
+        try:
+            if self.next_stage_true is not None:
+                self.next_stage_true.socket.send(bundle)
+        except:
+            self.exception_recorder(bundle,
+                                    context='Sending of bundle after clustering failed in '+self.descr)
 
 
 class IsolateStage(LogicStage):
@@ -209,12 +251,18 @@ class IsolateStage(LogicStage):
         '''Specialized reaction peforming the isolating.'''
         
         print(f'Isolating {bundle.feature_space.label}')
-            
-        bundle.graph.isolate(bundle.feature_space, layer=bundle.attribute)
         
-        if self.next_stage_true is not None:
-            self.next_stage_true.socket.send(bundle)
-
+        try:
+            bundle.graph.isolate(bundle.feature_space, layer=bundle.attribute)
+        except:
+            self.exception_recorder(bundle, context='Error while isolating in '+self.descr)
+            
+        try:
+            if self.next_stage_true is not None:
+                self.next_stage_true.socket.send(bundle)
+        except:
+            self.exception_recorder(bundle,
+                                    context='Sending of bundle after isolation failed in '+self.descr)
 
 
 class SplittingStage(LogicStage):
@@ -224,41 +272,44 @@ class SplittingStage(LogicStage):
     def react_to_false(self, bundle):
         '''Specialized stage to split a bundle.
         Envokes IPAG.attribute_divided_fs_arrays().'''
+
         if 'bundle_list' not in self.kwargs or not isinstance(self.kwargs['bundle_list'], list):
             raise ValueError('Object needs a list to append!')
         
         print(f'Splitting {bundle.feature_space.label}')
         
-        new_fs_list = bundle.graph.attribute_divided_fs_arrays(bundle.attr_config,
-                                                               bundle.attribute,
-                                                               subset=bundle.feature_space.order)
+        try:
+            new_fs_list = bundle.graph.attribute_divided_fs_arrays(bundle.attr_config,
+                                                                   bundle.attribute,
+                                                                   subset=bundle.feature_space.order)
+        except:
+            self.exception_recorder(bundle, context='Splitting of bundle failed in '+self.descr)
         
-        print(len(new_fs_list))
-        
-        if len(new_fs_list) == 1:
-            
-            metrics = bundle.graph.apply_group_metrics(new_fs_list[0], bundle.metric_config)
-            print(metrics)
-            
-            new_bundle = proc_bundle(bundle.graph, bundle.attribute, bundle.attr_config,
-                                     bundle.metric_config, new_fs_list[0], metrics)
-            
-            self.kwargs['bundle_list'].append(new_bundle)
-            
-            self.react_to_true(new_bundle)
-        
-        else:
-            for fs in new_fs_list:
-                metrics = bundle.graph.apply_group_metrics(fs, bundle.metric_config)
-                print(metrics)
-                
+        try:
+            print(len(new_fs_list))
+
+            if len(new_fs_list) == 1:
+    
                 new_bundle = proc_bundle(bundle.graph, bundle.attribute, bundle.attr_config,
-                                         bundle.metric_config, fs, metrics)
+                                         bundle.metric_config, new_fs_list[0], bundle.metric_dict)            
+    
+                self.react_to_true(new_bundle)
+    
+            else:
+                for fs in new_fs_list:
+                    metrics = bundle.graph.apply_group_metrics(fs, bundle.metric_config)
+                    print(metrics)
+    
+                    new_bundle = proc_bundle(bundle.graph, bundle.attribute, bundle.attr_config,
+                                             bundle.metric_config, fs, metrics)
+    
+                    self.kwargs['bundle_list'].append(new_bundle)
+        except:
+            self.exception_recorder(bundle,
+                                    context='Processing of splitting output failed in '+self.descr)
+            
                 
-                self.kwargs['bundle_list'].append(new_bundle)
-    
-    
-    
+
 class LogicStageDict(dict):
     '''Specialized dictionary to hold instances
     of LogicStage to facilitate their usage.'''
@@ -283,7 +334,14 @@ class LogicStageDict(dict):
         for stage in self.values():
             stage()
 
-            
+    def set_exception_recorder(self, exc_recorder):
+        '''Set the exception recorder of all contained
+        stages to a given instance.'''
+        
+        assert(isinstance(exc_recorder, ExceptionRecorder))
+        
+        for stage in self.values():
+            stage.set_exception_recorder(exc_recorder)
         
 
 def dynamic_clustering(graph, attr_config, attribute, metric_config, entry_point, hand_back):
@@ -318,8 +376,9 @@ if __name__ == '__main__':
     mock_bundle = proc_bundle('Graph', 'cluster', {'color':0.5}, {'size':'func'},
                               mock_fs(['0','1','0']), {'size':42})
     
-    er = ExceptionRecorder()
+    er = ExceptionRecorder('Test er')
     
+    er.raise_none_bundle_errors = False
     try:
         raise ValueError(42)
     except:
@@ -329,5 +388,5 @@ if __name__ == '__main__':
     try:
         raise TimeoutError('bad luck')
     except:
-        er(mock_bundle)
+        er()
 
