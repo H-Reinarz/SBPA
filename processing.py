@@ -73,7 +73,7 @@ class ExceptionRecorder(list):
         self.label = label
         self.raise_types = set()
         self.notify = notify
-        self.raise_none_bundle_errors=True
+        self.raise_mode = 'none_bundle'
 
     def print_traceback(self, index):
         '''Print full traceback for given entry.'''
@@ -114,7 +114,10 @@ class ExceptionRecorder(list):
         if catched.type in self.raise_types:
             raise
 
-        if bundle is None and self.raise_none_bundle_errors:
+        if self.raise_mode == 'all':
+            raise
+
+        if bundle is None and self.raise_mode == 'none_bundle':
             raise
 
 
