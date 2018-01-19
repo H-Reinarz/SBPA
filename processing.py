@@ -6,14 +6,23 @@ Created on Sat Jan  6 16:16:39 2018
 @author: hre070
 """
 import sys, traceback
-from collections import namedtuple
-
+from collections import namedtuple, deque
+from itertools import chain
 
 
 threshhold = namedtuple('Threshhold', ['operator', 'value'])
 
 proc_bundle = namedtuple('ProcessingBundle', ['graph', 'attribute', 'attr_config',
                                               'metric_config', 'feature_space', 'metric_dict'])
+def _format_b(b):
+    length = len(b.feature_space.label)
+    if length != 0:
+        layer = b.feature_space.label[-1]
+    else:
+        layer = '<empty>'
+    
+    string = '{}[layer:{} label:{}]'.format(b.attribute, length, layer)
+    return string
 
 #proc_error = namedtuple('ProcessingErrorEvent', ['type', 'value', 'traceback', 'bundle'])
 
@@ -40,9 +49,8 @@ class ProcessingErrorEvent():
     
     def __str__(self):
         if self.bundle is not None:
-            data = (self.type, self.value, self.context,
-                    self.bundle.attribute, self.bundle.feature_space.label)
-            string = 'Error: {}\nMessage: {}\nContext: {}\nBundle: {} {}'.format(*data)
+            data = (self.type, self.value, self.context, _format_b(self.bundle))
+            string = 'Error: {}\nMessage: {}\nContext: {}\nBundle: {}'.format(*data)
         else:
             data = (self.type, self.value, self.context)
             string = 'Error: {}\nMessage: {}\nContext: {}'.format(*data)
@@ -63,7 +71,7 @@ class ExceptionRecorder(list):
         super().__init__()
         
         self.label = label
-        self.raise_types = {}
+        self.raise_types = set()
         self.notify = notify
         self.raise_none_bundle_errors=True
 
@@ -143,8 +151,8 @@ class LogicStage(object):
             
         self.next_stage_true = None
         self.next_stage_false = None
-        self.queue_true = []
-        self.queue_false = []
+        self.queue_true = deque()
+        self.queue_false = deque()
         self.final_stage = final_stage
         self.kwargs = kwargs
         self.socket = None
@@ -192,7 +200,7 @@ class LogicStage(object):
 
     def react_to_true(self, bundle):
         '''Action if evaluate() returns True.'''
-        print("Reacts to True")
+        print(self.descr + " reacts to True")
         try:
             if self.next_stage_true is not None:
                 if self.final_stage:
@@ -204,7 +212,7 @@ class LogicStage(object):
 
     def react_to_false(self, bundle):
         '''Action if evaluate() returns False.'''
-        print("Reacts to False")
+        print(self.descr + " reacts to False")
         try:
             if self.next_stage_false is not None:
                 if self.final_stage:
@@ -236,7 +244,7 @@ class ClusterStage(LogicStage):
         
         del cluster_kwargs['algorithm']
         
-        print(f'Doing {self.kwargs["algorithm"]} on {bundle.feature_space.label}')
+        print(f'Doing {self.kwargs["algorithm"]} on bundle '+ _format_b(bundle))
         
         try:
             bundle.graph.clustering(bundle.attribute, self.kwargs['algorithm'],
@@ -259,7 +267,7 @@ class IsolateStage(LogicStage):
     def react_to_true(self, bundle):
         '''Specialized reaction peforming the isolating.'''
         
-        print(f'Isolating {bundle.feature_space.label}')
+        print('Isolating '+_format_b(bundle))
         
         try:
             bundle.graph.isolate(bundle.feature_space, layer=bundle.attribute)
@@ -283,17 +291,20 @@ class SplittingStage(LogicStage):
         Envokes IPAG.attribute_divided_fs_arrays().'''
 
         
-        print(f'Splitting {bundle.feature_space.label}')
+        print('Splitting '+_format_b(bundle))
         
         try:
             new_fs_list = bundle.graph.attribute_divided_fs_arrays(bundle.attr_config,
                                                                    bundle.attribute,
                                                                    subset=bundle.feature_space.order)
+            
+#            for fs in new_fs_list:
+#                print(fs.label, end=',  ')
         except:
             self.exception_recorder(bundle, context='Splitting of bundle failed in '+self.descr)
         
         try:
-            print(len(new_fs_list))
+            #print(len(new_fs_list))
 
             if len(new_fs_list) == 1:
     
@@ -326,6 +337,16 @@ class DynamicClustering(dict):
     '''Specialized dictionary to hold instances
     of LogicStage to facilitate their usage.'''
     
+    def __init__(self, descr=None):
+
+        if descr is not None:
+            self.descr = descr
+        else:
+            self.descr = self.__repr__()
+            
+        self.exc_recorder = ExceptionRecorder('ExcRec: '+self.descr)
+        self.set_exception_recorder(self.exc_recorder)
+    
     def link_stages(self, stage, successor_true=None, successor_false=None):
         '''Wrapper around LogicState.set_successor_stages()
         to work with keys.'''
@@ -346,26 +367,39 @@ class DynamicClustering(dict):
         for stage in self.values():
             stage()
 
-    def set_exception_recorder(self, exc_recorder):
+    def set_exception_recorder(self, exc_recorder=None):
         '''Set the exception recorder of all contained
         stages to a given instance.'''
         
-        assert(isinstance(exc_recorder, ExceptionRecorder))
+        if exc_recorder is not None:
+            assert(isinstance(exc_recorder, ExceptionRecorder))
+            self.exc_recorder = exc_recorder
         
         for stage in self.values():
-            stage.set_exception_recorder(exc_recorder)
+            stage.set_exception_recorder(self.exc_recorder)
             
     def bundle_queue(self):
         '''Providing the enqueued bundles sequentially
         prioritizing the ones coming from react_to_false().'''
         
-        for name, stage in self.items():
-           for element in stage.queue_false:
-               yield (name, element)
+        count_empty = 0       
+        while count_empty < (len(self)*2):
+            count_empty = 0
+            dict_false = {}
+            dict_true = {}
+            for name, stage in self.items():
+                try:
+                    dict_false[name] = stage.queue_false.popleft()
+                except IndexError:
+                    count_empty += 1
+                
+                try:
+                    dict_true[name] = stage.queue_true.popleft()
+                except IndexError:
+                    count_empty += 1
+                
+            yield from chain(dict_false.items(), dict_true.items())
 
-        for name, stage in self.items():
-           for element in stage.queue_true:
-               yield (name, element)
         
 
     def __call__(self, graph, attr_config, attribute, metric_config, start_point):
@@ -381,7 +415,9 @@ class DynamicClustering(dict):
         
         for entry_point, element in self.bundle_queue():
             flag, bundle, sender = element
-            print(f'Sending bundle {bundle.attribute} {bundle.feature_space.label} to {entry_point} from {sender} reacting to {flag}')
+            m_data = (_format_b(bundle), entry_point, sender, flag)
+            message = 'Handing over bundle {} to {} from {} - MODE:{}'.format(*m_data)
+            print(message)
             self[entry_point].socket.send(element[1])
 
         
