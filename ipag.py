@@ -64,7 +64,7 @@ class IPAG(RAG):
 
         #Setup simple pixel index map
         index_map = np.arange(seg_img.size, dtype=np.int64)
-        index_map.reshape(seg_img.shape)
+        index_map = index_map.reshape(seg_img.shape)
 
         #Set indipendent node attributes
         for node in self.__iter__():
@@ -73,19 +73,21 @@ class IPAG(RAG):
 
             #Assign attributes to node
             self.node[node].update({'labels': [node],
-                                    'pixels': None, #set(index_map[label_mask]),
+                                    'pixels': set(index_map[label_mask]),
                                     'pixel_count': seg_img[label_mask].size})
 
     def mask(self, nodes):
         '''Method to produce a index mask for a set
         of nodes to address corresponding pixels in the image.'''
+        if isinstance(nodes, int):
+            mask_set = self.node[nodes]['pixels']      
+        else:
+            mask_set = set()
+            for node in nodes:
+                for pixel in self.node[node]['pixels']:
+                    mask_set.add(pixel)
 
-        mask_set = set()
-        for node in nodes:
-            for pixel in self.node[node]['pixels']:
-                mask_set.add(pixel)
-
-        return np.array(list(mask_set), dtype=np.int64)
+        return np.unravel_index(list(mask_set), self.seg_img.shape)
 
 
     def deepcopy_node(self, node):
@@ -103,8 +105,7 @@ class IPAG(RAG):
         #Set node attributes
         for node in self.__iter__():
             #get color values for super pixel
-            label_mask = self.seg_img == node
-            masked_image = image[label_mask]
+            masked_image = image[self.mask(node)]
 
             attr_value = calc_attr_value(array=masked_image, func=function, **func_kwargs)
 
@@ -534,9 +535,8 @@ class IPAG(RAG):
 
         for node in self.__iter__():
             for label in set(self.node[node]['labels']):
-                mask = self.seg_img == label
                 attr_string = '-'.join(self.node[node][attribute][:max_layer])
-                cluster_img[mask] = label_dict[attr_string ]
+                cluster_img[self.mask()] = label_dict[attr_string ]
 
         return cluster_img
 
