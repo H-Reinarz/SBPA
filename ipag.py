@@ -443,35 +443,68 @@ class IPAG(RAG):
                 self.node[node][attribute][ix] = affinity
 
 
-    def isolate(self, fs, layer):
+    def isolate(self, fs, attribute):
         ''' Transforms multifeature clusters to single feature clusters on the graph,
         and adds them to the layer list'''
         
         if not isinstance(fs, IPAG.feature_space):
             raise TypeError("To Isolate Feature the input must be IPAG.feature_space!")
             
+        layer_dict = {}
+        
         processed = set() # Keep track which node has already been processed
         
-        cluster = 0
+    
         for node in fs.order:
             if node in processed:
                 continue
-            # Isolate current node
-            self.isolate_helper(self, node, cluster, processed, layer)
-            cluster += 1
-
-    
-    def isolate_helper(self, node, clusters, processed, layer):
-        '''Helper function for IPAG.single_feature().'''
-        # Node is processed and gets new cluster ID
-        processed.add(node)
             
+            current_layer_key = '-'.join(self.node[node][attribute])
+            if  current_layer_key not in layer_dict:
+                layer_dict['-'.join(self.node[node][attribute])] = 0
+            
+            neighbour_list = [node]
+            neighbour_set = set(neighbour_list)
+            for neighbour in neighbour_list:
+                equal_neighbours = self.get_equal_neighbors(neighbour, attribute)
+                for en in equal_neighbours:
+                    if en not in neighbour_set:
+                        neighbour_list.append(en) #+= list(neighbour_set.difference(equal_neighbours))
+                neighbour_set.update(neighbour_list)
+                
+                self.node[neighbour][attribute].append(str(layer_dict[current_layer_key]))
+                
+            layer_dict[current_layer_key] += 1
+            
+                
+            processed.update(neighbour_list)
+            
+        print(layer_dict)
+            
+
+    def get_equal_neighbors(self, node, layer):
+        '''Helper function for IPAG.single_feature().'''
         # Do the same for all neighbors with the same previous cluster
-        for neighbour in self.neighbors_iter(node):
-            if (self.node[node][layer] == self.node[neighbour][layer]) and neighbour not in processed:
-                self.isolate_helper(self, neighbour, clusters, processed, layer)   
+        filter_n = lambda n: self.node[node][layer] == self.node[n][layer]
         
-        self.node[node][layer].append(str(clusters))
+        return filter(filter_n, self.neighbors(node))
+    
+        
+        
+        #self.node[node][layer].append(str(clusters))
+    
+    
+#    def isolate_helper(self, node, clusters, processed, layer):
+#        '''Helper function for IPAG.single_feature().'''
+#        # Node is processed and gets new cluster ID
+#        processed.add(node)
+#            
+#        # Do the same for all neighbors with the same previous cluster
+#        for neighbour in self.neighbors(node):
+#            if (self.node[node][layer] == self.node[neighbour][layer]) and neighbour not in processed:
+#                self.isolate_helper(neighbour, clusters, processed, layer)   
+#        
+#        self.node[node][layer].append(str(clusters))
     
     
     def apply_group_metrics(self, fs, metric_config):

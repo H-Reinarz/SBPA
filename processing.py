@@ -273,7 +273,7 @@ class IsolateStage(LogicStage):
         print('Isolating '+_format_b(bundle))
         
         try:
-            bundle.graph.isolate(bundle.feature_space, layer=bundle.attribute)
+            bundle.graph.isolate(bundle.feature_space, attribute=bundle.attribute)
         except:
             self.exception_recorder(bundle, context='Error while isolating in '+self.descr)
             
@@ -300,7 +300,7 @@ class SplittingStage(LogicStage):
             new_fs_list = bundle.graph.attribute_divided_fs_arrays(bundle.attr_config,
                                                                    bundle.attribute,
                                                                    subset=bundle.feature_space.order)
-            
+            print(len(new_fs_list),' new feature spaces!')            
 #            for fs in new_fs_list:
 #                print(fs.label, end=',  ')
         except:
@@ -319,11 +319,13 @@ class SplittingStage(LogicStage):
             else:
                 for fs in new_fs_list:
                     metrics = bundle.graph.apply_group_metrics(fs, bundle.metric_config)
-                    print(metrics)
+                    
     
                     new_bundle = proc_bundle(bundle.graph, bundle.attribute, bundle.attr_config,
                                              bundle.metric_config, fs, metrics)
-    
+
+                    print(_format_b(new_bundle),'>>>',metrics)
+                    
                     if self.next_stage_true is not None:
                         if self.final_stage:
                             self.next_stage_true.queue_true.append((True, new_bundle, self.descr))

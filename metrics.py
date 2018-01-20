@@ -83,12 +83,26 @@ def count_multi_features(graph, fs, attribute):
         
         isolateNodes = 0
         
+        
+        processed = set() # Keep track which node has already been processed
+        
+    
         for node in fs.order:
             if node in processed:
                 continue
-            # Isolate current node
-            count_isolate(graph, node, processed, attribute)
+            
+            neighbour_list = [node]
+            neighbour_set = set(neighbour_list)
+            for neighbour in neighbour_list:
+                equal_neighbours = graph.get_equal_neighbors(neighbour, attribute)
+                for en in equal_neighbours:
+                    if en not in neighbour_set:
+                        neighbour_list.append(en) #+= list(neighbour_set.difference(equal_neighbours))
+                neighbour_set.update(neighbour_list)
+                
             isolateNodes += 1
+
+            processed.update(neighbour_list)
         
         return isolateNodes
 
@@ -98,16 +112,14 @@ def count_multi_features(graph, fs, attribute):
     else:
         raise AttributeError(f'Not all nodes have the attribute {attribute}')
         
-def count_isolate(graph, node, processed, attribute):
-    '''Helper Function of count_multi_features'''
+def get_equal_neighbors(graph, node, processed, attribute):
+    '''Helper Function of count_multi_features. Returns neighbors of a node 
+    that have the same label.'''
     
-    # Node is processed and gets new cluster ID
-    processed.add(node)
-        
     # Do the same for all neighbors with the same previous cluster
-    for neighbour in graph.neighbors(node):
-        if (graph.node[node][attribute] == graph.node[neighbour][attribute]) and neighbour not in processed:
-            count_isolate(graph, neighbour, processed, attribute)   
+    filter_n = lambda n: graph.node[node][attribute] == graph.node[n][attribute]
+    
+    return filter(filter_n, graph.neighbors(node))  
             
 def count_superpixel(graph, fs):
     return len(fs.order)
