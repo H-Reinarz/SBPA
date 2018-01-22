@@ -76,16 +76,13 @@ class IPAG(RAG):
                                     'pixels': set(index_map[label_mask]),
                                     'pixel_count': seg_img[label_mask].size})
 
-    def mask(self, nodes):
+    def mask(self, *nodes):
         '''Method to produce a index mask for a set
-        of nodes to address corresponding pixels in the image.'''
-        if isinstance(nodes, int):
-            mask_set = self.node[nodes]['pixels']      
-        else:
-            mask_set = set()
-            for node in nodes:
-                for pixel in self.node[node]['pixels']:
-                    mask_set.add(pixel)
+        of nodes to address corresponding pixels in the image.'''  
+        mask_set = set()
+        for node in nodes:
+            for pixel in self.node[node]['pixels']:
+                mask_set.add(pixel)
 
         return np.unravel_index(list(mask_set), self.seg_img.shape)
 
@@ -536,7 +533,7 @@ class IPAG(RAG):
         for node in self.__iter__():
             for label in set(self.node[node]['labels']):
                 attr_string = '-'.join(self.node[node][attribute][:max_layer])
-                cluster_img[self.mask()] = label_dict[attr_string ]
+                cluster_img[self.mask(node)] = label_dict[attr_string ]
 
         return cluster_img
 

@@ -93,4 +93,9 @@ def pixel_per_cluster(graph, attribute):
         else:
             clusterDict['-'.join(str(layer) for layer in graph.node[node][attribute])] = graph.node[node]['pixel_count']
     return clusterDict
+
+
+def get_max_layer(Graph, attribute):
+    attr_labels = {''.join(Graph.node[node][attribute]) for node in Graph.__iter__()}
     
+    return max({len(label) for label in attr_labels})
