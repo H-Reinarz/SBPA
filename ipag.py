@@ -76,16 +76,14 @@ class IPAG(RAG):
                                     'pixels': set(index_map[label_mask]),
                                     'pixel_count': seg_img[label_mask].size})
 
-    def mask(self, nodes):
+    def mask(self, *nodes):
         '''Method to produce a index mask for a set
         of nodes to address corresponding pixels in the image.'''
-        if isinstance(nodes, int):
-            mask_set = self.node[nodes]['pixels']      
-        else:
-            mask_set = set()
-            for node in nodes:
-                for pixel in self.node[node]['pixels']:
-                    mask_set.add(pixel)
+
+        mask_set = set()
+        for node in nodes:
+            for pixel in self.node[node]['pixels']:
+                mask_set.add(pixel)
 
         return np.unravel_index(list(mask_set), self.seg_img.shape)
 
@@ -483,10 +481,10 @@ class IPAG(RAG):
         print(layer_dict)
             
 
-    def get_equal_neighbors(self, node, layer):
+    def get_equal_neighbors(self, node, attribute):
         '''Helper function for IPAG.single_feature().'''
         # Do the same for all neighbors with the same previous cluster
-        filter_n = lambda n: self.node[node][layer] == self.node[n][layer]
+        filter_n = lambda n: self.node[node][attribute] == self.node[n][attribute]
         
         return filter(filter_n, self.neighbors(node))
     
@@ -506,6 +504,14 @@ class IPAG(RAG):
 #                self.isolate_helper(neighbour, clusters, processed, layer)   
 #        
 #        self.node[node][layer].append(str(clusters))
+    
+    
+    def remove_top_layer(self, fs, attribute, layers):
+        if not isinstance(fs, IPAG.feature_space):
+            raise TypeError("To the latest layer the input must be IPAG.feature_space!")
+        
+        for node in fs.order:
+            del self.node[node][attribute][-layers]
     
     
     def apply_group_metrics(self, fs, metric_config):
@@ -536,7 +542,7 @@ class IPAG(RAG):
         for node in self.__iter__():
             for label in set(self.node[node]['labels']):
                 attr_string = '-'.join(self.node[node][attribute][:max_layer])
-                cluster_img[self.mask()] = label_dict[attr_string ]
+                cluster_img[self.mask(node)] = label_dict[attr_string ]
 
         return cluster_img
 
