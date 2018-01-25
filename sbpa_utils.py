@@ -93,4 +93,20 @@ def pixel_per_cluster(graph, attribute):
         else:
             clusterDict['-'.join(str(layer) for layer in graph.node[node][attribute])] = graph.node[node]['pixel_count']
     return clusterDict
+
+def filter_cluster_image(cluster_image, reference_image, filter_value):
+    
+    cluster_value_dict = {}
+    
+    unique_clusters = np.unique(cluster_image)
+    
+    for cluster in unique_clusters:
+        cluster_value_dict[cluster] = np.mean(reference_image[cluster_image == cluster])
+    
+    for key, value in cluster_value_dict.items():
+        if value <= filter_value:
+            cluster_image[cluster_image == key] = unique_clusters.max() + 1
+            
+    return cluster_image
+    
     
