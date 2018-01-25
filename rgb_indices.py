@@ -109,7 +109,7 @@ def make_pca(di, image, components = 3):
     dimDict = {}
     
     for i in range(0,components):
-        dimDict["dim"+str(i+1)] = normalize_image(image_from_array(pca_reduced[:,i], (image.shape[0], image.shape[1], 1)))
+        dimDict["dim"+str(i+1)] = normalize_image(image_from_array(pca_reduced[:,i], (image.shape[0], image.shape[1])))
     
     comp = type("components", (), dimDict)
     p = comp()
