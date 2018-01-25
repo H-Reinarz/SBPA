@@ -305,6 +305,8 @@ class SplittingStage(LogicStage):
 #                print(fs.label, end=',  ')
         except:
             self.exception_recorder(bundle, context='Splitting of bundle failed in '+self.descr)
+               
+        
         
         try:
             #print(len(new_fs_list))
@@ -336,7 +338,71 @@ class SplittingStage(LogicStage):
             self.exception_recorder(bundle,
                                     context='Processing of splitting output failed in '+self.descr)
             
-                
+            
+class RectifySplittingStage(LogicStage):
+    '''Alternative Splitting function who steps back a specific amount of layers if evaluation of metrics returns False'''
+    
+    def react_to_true(self, bundle):
+        '''Specialized stage to split a bundle.
+        Envokes IPAG.attribute_divided_fs_arrays().'''
+
+        
+        print('Splitting '+_format_b(bundle))
+        
+        try:
+            new_fs_list = bundle.graph.attribute_divided_fs_arrays(bundle.attr_config,
+                                                                   bundle.attribute,
+                                                                   subset=bundle.feature_space.order)
+            print(len(new_fs_list),' new feature spaces!')            
+#            for fs in new_fs_list:
+#                print(fs.label, end=',  ')
+        except:
+            self.exception_recorder(bundle, context='Splitting of bundle failed in '+self.descr)
+        
+        remove_layer = False
+        
+        for fs in new_fs_list:
+            metrics = bundle.graph.apply_group_metrics(fs, bundle.metric_config)
+            
+            
+            if not self.evaluate(metrics):
+                remove_layer = True
+                break
+        
+        
+        try:
+            if remove_layer:
+                bundle.graph.remove_top_layer(bundle.feature_space, bundle.attribute, layers=self.kwargs['layers'])
+        
+                self.react_to_false(bundle)        
+
+            elif len(new_fs_list) == 1:
+    
+                new_bundle = proc_bundle(bundle.graph, bundle.attribute, bundle.attr_config,
+                                         bundle.metric_config, new_fs_list[0], bundle.metric_dict)            
+    
+                self.react_to_false(new_bundle)
+    
+            else:
+                for fs in new_fs_list:
+                    metrics = bundle.graph.apply_group_metrics(fs, bundle.metric_config)
+                    
+    
+                    new_bundle = proc_bundle(bundle.graph, bundle.attribute, bundle.attr_config,
+                                             bundle.metric_config, fs, metrics)
+
+                    print(_format_b(new_bundle),'>>>',metrics)
+                    
+                    if self.next_stage_true is not None:
+                        if self.final_stage:
+                            self.next_stage_true.queue_true.append((True, new_bundle, self.descr))
+                        else:
+                            self.next_stage_true.socket.send(bundle)
+
+        except:
+            self.exception_recorder(bundle,
+                                    context='Processing of splitting output failed in '+self.descr)
+            
 
 class DynamicClustering(dict):
     '''Specialized dictionary to hold instances
