@@ -35,7 +35,7 @@ def get_params(ini):
                 print("exception on %s!" % option)
                 dict1[option] = None
             
-        paramsDict[section] = dictobject(dict1)
+        paramsDict[section] = dict_object(dict1)
         
     Params = type("Params", (), paramsDict)
     p = Params()
