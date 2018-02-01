@@ -94,8 +94,27 @@ def pixel_per_cluster(graph, attribute):
             clusterDict['-'.join(str(layer) for layer in graph.node[node][attribute])] = graph.node[node]['pixel_count']
     return clusterDict
 
+<<<<<<< HEAD
 
 def get_max_layer(Graph, attribute):
     attr_labels = {''.join(Graph.node[node][attribute]) for node in Graph.__iter__()}
     
     return max({len(label) for label in attr_labels})
+=======
+def filter_cluster_image(cluster_image, reference_image, filter_value):
+    
+    cluster_value_dict = {}
+    
+    unique_clusters = np.unique(cluster_image)
+    
+    for cluster in unique_clusters:
+        cluster_value_dict[cluster] = np.mean(reference_image[cluster_image == cluster])
+    
+    for key, value in cluster_value_dict.items():
+        if value <= filter_value:
+            cluster_image[cluster_image == key] = unique_clusters.max() + 1
+            
+    return cluster_image
+    
+    
+>>>>>>> Jannik
