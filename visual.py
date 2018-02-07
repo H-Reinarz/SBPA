@@ -9,7 +9,7 @@ from skimage.measure import regionprops
 
 
 
-def plot_sp_labels(axes, labels, fontsize, subset=None, **text_kwargs):
+def plot_sp_labels(axes, labels, fontsize, subset=None, abs_font=False, **text_kwargs):
     '''Function that plots the label of a region to its centroid.
     Axes with appropriate background image serve as an argumunt, along with
     label image and text parameters.'''
@@ -18,9 +18,12 @@ def plot_sp_labels(axes, labels, fontsize, subset=None, **text_kwargs):
     labels += 1
 
     #convert fontsize to pt
-    wext = axes.get_window_extent()
-    pt_ratio = wext.height/labels.shape[0]
-    pt_size = round(fontsize*pt_ratio)
+    if not abs_font:
+        wext = axes.get_window_extent()
+        pt_ratio = wext.height/labels.shape[0]
+        pt_size = round(fontsize*pt_ratio)
+    else:
+        pt_size = fontsize
 
     if subset is not None:
         subset = set(subset)
@@ -58,7 +61,7 @@ def plot_node_attribute(axes, graph, attribute, fontsize, subset=None, **text_kw
     #iteratively plot the labels
     for reg in regionprops(graph.seg_img):
         true_label = reg.label-1
-        
+
         to_plot = graph.node[true_label][attribute]
 
         if subset is None or to_plot in subset:
