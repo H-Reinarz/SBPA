@@ -78,7 +78,7 @@ class IPAG(RAG):
 
     def mask(self, *nodes):
         '''Method to produce a index mask for a set
-        of nodes to address corresponding pixels in the image.'''  
+        of nodes to address corresponding pixels in the image.'''
         mask_set = set()
         for node in nodes:
             for pixel in self.node[node]['pixels']:
@@ -211,7 +211,7 @@ class IPAG(RAG):
     def calc_edge_weight_stats(self, attr_label='weight'):
         '''Perform descriptive stats on a given edge attribute.
         Result is stored as a graph attribute.'''
-        
+
         weight_list = self.get_edge_weight_list(attr_label)
 
         self.edge_weight_stats['min'] = min(weight_list)
@@ -225,7 +225,7 @@ class IPAG(RAG):
         '''Return the given percentile value for the value list af a specified attribute.
         When 'as_threshhold' is true, the mean of the percentile value
         and the next value is returned.'''
-        
+
         weight_list = self.get_edge_weight_list(attr_label)
 
         index = round(len(weight_list)*(perc/100))
@@ -292,7 +292,7 @@ class IPAG(RAG):
     def attribute_divided_fs_arrays(self, attr_config, div_attr, max_layer=None, subset=None, exclude=()):
         '''Return a feature space array for every value of a specified attribute.
         Nodes are excludable via the 'exclude' parameter.'''
-        
+
         temp_attr = 'temp_' + div_attr
 
         return_list = []
@@ -357,7 +357,7 @@ class IPAG(RAG):
         '''Perform any clustering operation from sklearn.cluster on a given feature space array
         (as returnd by 'get_feature_space_array()' or 'hist_to_fs_array()').
         Return the cluster label of each node as an attribute.'''
-        
+
 #        #Assert all involved nodes have a list as the given attribute
 #        assertion_set = set()
 #        for node in feature_space.order:
@@ -369,7 +369,7 @@ class IPAG(RAG):
 
         if algorithm == 'AgglomerativeClustering':
             cluster_kwargs['connectivity'] = feature_space.connectivity
-        
+
         cluster_class = getattr(sklearn.cluster, algorithm)
 
         if isinstance(feature_space, IPAG.feature_space):
@@ -444,23 +444,23 @@ class IPAG(RAG):
     def isolate(self, fs, attribute):
         ''' Transforms multifeature clusters to single feature clusters on the graph,
         and adds them to the layer list'''
-        
+
         if not isinstance(fs, IPAG.feature_space):
             raise TypeError("To Isolate Feature the input must be IPAG.feature_space!")
-            
+
         layer_dict = {}
-        
+
         processed = set() # Keep track which node has already been processed
-        
-    
+
+
         for node in fs.order:
             if node in processed:
                 continue
-            
+
             current_layer_key = '-'.join(self.node[node][attribute])
             if  current_layer_key not in layer_dict:
                 layer_dict['-'.join(self.node[node][attribute])] = 0
-            
+
             neighbour_list = [node]
             neighbour_set = set(neighbour_list)
             for neighbour in neighbour_list:
@@ -469,50 +469,50 @@ class IPAG(RAG):
                     if en not in neighbour_set:
                         neighbour_list.append(en) #+= list(neighbour_set.difference(equal_neighbours))
                 neighbour_set.update(neighbour_list)
-                
+
                 self.node[neighbour][attribute].append(str(layer_dict[current_layer_key]))
-                
+
             layer_dict[current_layer_key] += 1
-            
-                
+
+
             processed.update(neighbour_list)
-            
+
         print(layer_dict)
-            
+
 
     def get_equal_neighbors(self, node, attribute):
         '''Helper function for IPAG.single_feature().'''
         # Do the same for all neighbors with the same previous cluster
         filter_n = lambda n: self.node[node][attribute] == self.node[n][attribute]
-        
+
         return filter(filter_n, self.neighbors(node))
-    
-        
-        
+
+
+
         #self.node[node][layer].append(str(clusters))
-    
-    
+
+
 #    def isolate_helper(self, node, clusters, processed, layer):
 #        '''Helper function for IPAG.single_feature().'''
 #        # Node is processed and gets new cluster ID
 #        processed.add(node)
-#            
+#
 #        # Do the same for all neighbors with the same previous cluster
 #        for neighbour in self.neighbors(node):
 #            if (self.node[node][layer] == self.node[neighbour][layer]) and neighbour not in processed:
-#                self.isolate_helper(neighbour, clusters, processed, layer)   
-#        
+#                self.isolate_helper(neighbour, clusters, processed, layer)
+#
 #        self.node[node][layer].append(str(clusters))
-    
-    
+
+
     def remove_top_layer(self, fs, attribute, layers):
         if not isinstance(fs, IPAG.feature_space):
             raise TypeError("To the latest layer the input must be IPAG.feature_space!")
-        
+
         for node in fs.order:
             del self.node[node][attribute][-layers]
-    
-    
+
+
     def apply_group_metrics(self, fs, metric_config):
         '''IN DEVELOPMENT'''
         metric_dict = dict.fromkeys(metric_config)
@@ -523,7 +523,7 @@ class IPAG(RAG):
         return metric_dict
 
 
-    def produce_cluster_image(self, attribute, max_layer=None, dtype=np.int64):
+    def produce_cluster_image(self, attribute, max_layer=None, sort=False, dtype=np.int64):
         '''Render an image (2D numpy array) of cluster labels based
         on a cluster label node attribute.'''
 
@@ -532,7 +532,12 @@ class IPAG(RAG):
         else:
             attr_labels = {'-'.join(self.node[node][attribute]) for node in self.__iter__()}
 
-        label_dict = dict(zip(attr_labels, range(len(attr_labels))))
+
+        if sort:
+            sort_attr_lables = list(sorted(attr_labels, key=len))
+            label_dict = dict(zip(sort_attr_lables, range(len(attr_labels))))
+        else:
+            label_dict = dict(zip(attr_labels, range(len(attr_labels))))
 
         print(label_dict)
 

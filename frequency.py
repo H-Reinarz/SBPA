@@ -146,12 +146,10 @@ class DFTanalyzer:
 
     def __init__(self, img):
         self.dft = fft.fftshift(fft.fft2(img))
-        
+
         self.contour = None
         self.ellipse = None
         self.wavelength = None
-        self.texture_radius = None
-        self.min_patch_size = None
         self.low_pass = None
         self.filtered_img = None
 
@@ -201,9 +199,19 @@ class DFTanalyzer:
 
         self.wavelength = round((wavelength_x + wavelength_y)/2)
 
-        self.texture_radius = round(self.wavelength/2)
+    @property
+    def texture_radius(self):
+        if self.wavelength is not None:
+            return round(self.wavelength/2)
+        else:
+            return None
 
-        self.min_patch_size = round(self.texture_radius**2 * pi)
+    @property
+    def min_patch_size(self):
+        if self.wavelength is not None:
+            return round(self.texture_radius**2 * pi)
+        else:
+            return None
 
 
     def apply_lowpass(self, upper, lower, gauss_sigma=1):
