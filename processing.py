@@ -332,7 +332,7 @@ class SplittingStage(LogicStage):
                         if self.final_stage:
                             self.next_stage_true.queue_true.append((True, new_bundle, self.descr))
                         else:
-                            self.next_stage_true.socket.send(bundle)
+                            self.next_stage_true.socket.send(new_bundle)
 
         except:
             self.exception_recorder(bundle,
@@ -397,7 +397,7 @@ class RectifySplittingStage(LogicStage):
                         if self.final_stage:
                             self.next_stage_true.queue_true.append((True, new_bundle, self.descr))
                         else:
-                            self.next_stage_true.socket.send(bundle)
+                            self.next_stage_true.socket.send(new_bundle)
 
         except:
             self.exception_recorder(bundle,
