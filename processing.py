@@ -6,7 +6,7 @@ Created on Sat Jan  6 16:16:39 2018
 @author: hre070
 """
 import sys, traceback
-from collections import namedtuple, deque
+from collections import namedtuple, deque, Counter
 from itertools import chain
 
 
@@ -143,7 +143,7 @@ class LogicStage(object):
     set of metrics. It also serves as a base class for more specialized stages
     in the same workflow.'''
 
-    def __init__(self, final_stage, threshhold_dict=None, descr=None, **kwargs):
+    def __init__(self, indirect_stage, threshhold_dict=None, descr=None, **kwargs):
 
         self.threshhold_dict = threshhold_dict
 
@@ -156,7 +156,7 @@ class LogicStage(object):
         self.next_stage_false = None
         self.queue_true = deque()
         self.queue_false = deque()
-        self.final_stage = final_stage
+        self.indirect_stage = indirect_stage
         self.kwargs = kwargs
         self.socket = None
         self.exception_recorder = _raise
@@ -206,7 +206,7 @@ class LogicStage(object):
         print(self.descr + " reacts to True")
         try:
             if self.next_stage_true is not None:
-                if self.final_stage:
+                if self.indirect_stage:
                     self.next_stage_true.queue_true.append((True, bundle, self.descr))
                 else:
                     self.next_stage_true.socket.send(bundle)
@@ -218,7 +218,7 @@ class LogicStage(object):
         print(self.descr + " reacts to False")
         try:
             if self.next_stage_false is not None:
-                if self.final_stage:
+                if self.indirect_stage:
                     self.next_stage_false.queue_false.append((False, bundle, self.descr))
                 else:
                     self.next_stage_false.socket.send(bundle)
@@ -329,7 +329,7 @@ class SplittingStage(LogicStage):
                     print(_format_b(new_bundle),'>>>',metrics)
 
                     if self.next_stage_true is not None:
-                        if self.final_stage:
+                        if self.indirect_stage:
                             self.next_stage_true.queue_true.append((True, new_bundle, self.descr))
                         else:
                             self.next_stage_true.socket.send(new_bundle)
@@ -394,7 +394,7 @@ class RectifySplittingStage(LogicStage):
                     print(_format_b(new_bundle),'>>>',metrics)
 
                     if self.next_stage_true is not None:
-                        if self.final_stage:
+                        if self.indirect_stage:
                             self.next_stage_true.queue_true.append((True, new_bundle, self.descr))
                         else:
                             self.next_stage_true.socket.send(new_bundle)
@@ -404,6 +404,31 @@ class RectifySplittingStage(LogicStage):
                                     context='Processing of splitting output failed in '+self.descr)
 
 
+class AbsorptionStage(LogicStage):
+    '''Absorption Stage'''
+    
+    def react_to_true(self, bundle):
+        print('Absorbing '+_format_b(bundle))
+        
+        bundle_neighbors = set()
+        
+        for node in bundle.feature_space.order:
+            for neighbor in bundle.graph.neighbors(node):
+                if neighbor not in bundle.feature_space.order:
+                    bundle_neighbors.add(neighbor)
+        
+        cluster_list = ['-'.join(bundle.graph.node[neighbor][bundle.attribute]) for neighbor in bundle_neighbors]
+        
+        ranks = Counter(cluster_list)
+        
+        absorb_cluster_string = ranks.most_common(1)[0][0]
+        
+        new_layer_list = absorb_cluster_string.split('-')
+        
+        for node in bundle.feature_space.order:
+            bundle.graph.node[node][bundle.attribute] = new_layer_list
+        
+        
 class DynamicClustering(dict):
     '''Specialized dictionary to hold instances
     of LogicStage to facilitate their usage.'''
@@ -417,6 +442,10 @@ class DynamicClustering(dict):
 
         self.exc_recorder = ExceptionRecorder('ExcRec: '+self.descr)
         self.set_exception_recorder(self.exc_recorder)
+        
+        self.post_processing_stage = None
+        
+        self['post_processing_stage'] = self.post_processing_stage
 
     def link_stages(self, stage, successor_true=None, successor_false=None):
         '''Wrapper around LogicState.set_successor_stages()
@@ -437,6 +466,9 @@ class DynamicClustering(dict):
 
         for stage in self.values():
             stage()
+            
+        if self.post_processing_stage is not None:
+            self.post_processing_stage()
 
     def set_exception_recorder(self, exc_recorder=None):
         '''Set the exception recorder of all contained
@@ -491,6 +523,16 @@ class DynamicClustering(dict):
             print(message)
             self[entry_point].socket.send(element[1])
 
+        #Post porcessing
+        if self.post_processing_stage is not None:
+            post_proc_bundles = chain(self.post_processing_stage.queue_false, self.post_processing_stage.queue_true)
+            
+            for element in post_proc_bundles:
+                flag, bundle, sender = element
+                m_data = (_format_b(bundle), self.post_processing_stage.descr, sender, flag)
+                message = 'Post-processing bundle {} to {} from {} - MODE:{}'.format(*m_data)
+                print(message)
+                self.post_processing_stage.socket.send(element[1])
 
 
 

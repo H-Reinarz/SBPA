@@ -510,7 +510,7 @@ class IPAG(RAG):
             raise TypeError("To the latest layer the input must be IPAG.feature_space!")
 
         for node in fs.order:
-            del self.node[node][attribute][-layers]
+            del self.node[node][attribute][-layers:]
 
 
     def apply_group_metrics(self, fs, metric_config):
