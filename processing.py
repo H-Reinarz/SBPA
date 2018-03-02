@@ -14,15 +14,28 @@ threshhold = namedtuple('Threshhold', ['operator', 'value'])
 
 proc_bundle = namedtuple('ProcessingBundle', ['graph', 'attribute', 'attr_config',
                                               'metric_config', 'feature_space', 'metric_dict'])
+#def _format_b(b):
+#    length = len(b.feature_space.label)
+#    if length != 0:
+#        layer = b.feature_space.label[-1]
+#    else:
+#        layer = '<empty>'
+#
+#    string = '{}[layer:{} label:{}]'.format(b.attribute, length, layer)
+#    return string
+
+
 def _format_b(b):
     length = len(b.feature_space.label)
     if length != 0:
-        layer = b.feature_space.label[-1]
+        string = '-'.join(b.feature_space.label)
     else:
-        layer = '<empty>'
-
-    string = '{}[layer:{} label:{}]'.format(b.attribute, length, layer)
+        string = '<empty>'
+        
     return string
+    
+
+
 
 #proc_error = namedtuple('ProcessingErrorEvent', ['type', 'value', 'traceback', 'bundle'])
 
@@ -408,7 +421,6 @@ class AbsorptionStage(LogicStage):
     '''Absorption Stage'''
     
     def react_to_true(self, bundle):
-        print('Absorbing '+_format_b(bundle))
         
         bundle_neighbors = set()
         
@@ -422,6 +434,8 @@ class AbsorptionStage(LogicStage):
         ranks = Counter(cluster_list)
         
         absorb_cluster_string = ranks.most_common(1)[0][0]
+
+        print('Absorbing '+_format_b(bundle), ' into ', absorb_cluster_string)
         
         new_layer_list = absorb_cluster_string.split('-')
         
@@ -440,21 +454,21 @@ class DynamicClustering(dict):
         else:
             self.descr = self.__repr__()
 
+        self.post_processing_stage = None
+
         self.exc_recorder = ExceptionRecorder('ExcRec: '+self.descr)
         self.set_exception_recorder(self.exc_recorder)
         
-        self.post_processing_stage = None
         
-        self['post_processing_stage'] = self.post_processing_stage
 
     def link_stages(self, stage, successor_true=None, successor_false=None):
         '''Wrapper around LogicState.set_successor_stages()
         to work with keys.'''
 
-        if successor_true is not None:
+        if successor_true is not None and isinstance(successor_true, str):
             successor_true = self[successor_true]
 
-        if successor_false is not None:
+        if successor_false is not None and isinstance(successor_false, str):
             successor_false = self[successor_false]
 
         self[stage].set_successor_stages(successor_true, successor_false)
@@ -480,6 +494,9 @@ class DynamicClustering(dict):
 
         for stage in self.values():
             stage.set_exception_recorder(self.exc_recorder)
+            
+        if self.post_processing_stage is not None:
+            self.post_processing_stage.set_exception_recorder(self.exc_recorder)
 
     def bundle_queue(self):
         '''Providing the enqueued bundles sequentially
@@ -525,7 +542,8 @@ class DynamicClustering(dict):
 
         #Post porcessing
         if self.post_processing_stage is not None:
-            post_proc_bundles = chain(self.post_processing_stage.queue_false, self.post_processing_stage.queue_true)
+            post_proc_bundles = sorted(chain(self.post_processing_stage.queue_false, self.post_processing_stage.queue_true), \
+                                       key=lambda e: e[1].metric_dict['pixel_size'], reverse=True)
             
             for element in post_proc_bundles:
                 flag, bundle, sender = element
