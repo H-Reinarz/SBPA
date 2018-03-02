@@ -417,6 +417,32 @@ class RectifySplittingStage(LogicStage):
                                     context='Processing of splitting output failed in '+self.descr)
 
 
+#class AbsorptionStage(LogicStage):
+#    '''Absorption Stage'''
+#    
+#    def react_to_true(self, bundle):
+#        
+#        bundle_neighbors = set()
+#        
+#        for node in bundle.feature_space.order:
+#            for neighbor in bundle.graph.neighbors(node):
+#                if neighbor not in bundle.feature_space.order:
+#                    bundle_neighbors.add(neighbor)
+#        
+#        cluster_list = ['-'.join(bundle.graph.node[neighbor][bundle.attribute]) for neighbor in bundle_neighbors]
+#        
+#        ranked_neighbors = Counter(cluster_list)
+#        
+#        absorb_cluster_string = ranked_neighbors.most_common(1)[0][0]
+#
+#        print('Absorbing '+_format_b(bundle), ' into ', absorb_cluster_string)
+#        
+#        new_layer_list = absorb_cluster_string.split('-')
+#        
+#        for node in bundle.feature_space.order:
+#            bundle.graph.node[node][bundle.attribute] = new_layer_list
+        
+
 class AbsorptionStage(LogicStage):
     '''Absorption Stage'''
     
@@ -431,18 +457,40 @@ class AbsorptionStage(LogicStage):
         
         cluster_list = ['-'.join(bundle.graph.node[neighbor][bundle.attribute]) for neighbor in bundle_neighbors]
         
-        ranks = Counter(cluster_list)
+        ranked_neighbors = Counter(cluster_list)
         
-        absorb_cluster_string = ranks.most_common(1)[0][0]
+        #NEW CODE
+        n_neighbors = len(bundle_neighbors)
+        norm_ranked_neighbors = {cluster: count/n_neighbors for cluster, count in ranked_neighbors.items()}
+        
+        dist_ranked_neighbors = {cluster: bundle.Graph.cluster_distance \
+                                 (bundle.attribute, bundle.feature_space.label, cluster)/self.kwargs['norm_distance'] \
+                                 for cluster in Counter.keys()}
+        
+        n_factor, d_factor = self.kwargs['factors']
+        index = lambda neighbor: n_factor*norm_ranked_neighbors[neighbor] + d_factor*dist_ranked_neighbors[neighbor]
+        
+        neighbor_index_dict = {cluster: index(cluster) for cluster, dist in dist_ranked_neighbors.items() \
+                               if dist < self.kwargs['dist_threshhold']}
+        
+        index_ranked_neighbors = list(sorted(neighbor_index_dict.items(), key=lambda e: e[1], reverse=True))
 
-        print('Absorbing '+_format_b(bundle), ' into ', absorb_cluster_string)
-        
-        new_layer_list = absorb_cluster_string.split('-')
-        
-        for node in bundle.feature_space.order:
-            bundle.graph.node[node][bundle.attribute] = new_layer_list
-        
-        
+        if len(index_ranked_neighbors) > 0:        
+            absorb_cluster_string = index_ranked_neighbors[0][0]
+    
+            print('Absorbing {} into {}'.format(_format_b(bundle), absorb_cluster_string))
+            
+            new_layer_list = absorb_cluster_string.split('-')
+            
+            for node in bundle.feature_space.order:
+                bundle.graph.node[node][bundle.attribute] = new_layer_list
+ 
+        else:
+            print('Skipping {} due to distance threshhold of {}'.format(_format_b(bundle), round(self.kwargs['dist_threshhold'])))
+
+
+
+      
 class DynamicClustering(dict):
     '''Specialized dictionary to hold instances
     of LogicStage to facilitate their usage.'''

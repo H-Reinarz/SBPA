@@ -14,6 +14,7 @@ from .histogram import Hist
 from skimage.future.graph import RAG
 from skimage.measure import regionprops
 import sklearn.cluster
+from scipy.spatial.distance import euclidean
 
 
 def calc_attr_value(*, array, func, **kwargs):
@@ -60,7 +61,7 @@ class IPAG(RAG):
         self.edge_weight_stats = {}
 
         #dict for storing cluster properties
-        self.cluster_props = {}
+        self.cluster_centers = {}
 
         #Setup simple pixel index map
         index_map = np.arange(seg_img.size, dtype=np.int64)
@@ -385,6 +386,17 @@ class IPAG(RAG):
                 else:
                     self.node[node][attribute] = [str(label)]
 
+            for cluster in range(cluster_obj.shape[0]):
+                center_vector = cluster_obj.cluster_centers_[cluster, :]
+                
+                if attribute not in self.cluster_centers:
+                    self.cluster_centers[attribute] = {}
+                
+                key = feature_space.label
+                key = key.append(str(cluster))
+                key_string = '-'.join(key)
+                self.cluster_centers[attribute][key_string] = center_vector
+
             if return_clust_obj:
                 return cluster_obj
 
@@ -397,6 +409,23 @@ class IPAG(RAG):
 
         else:
             raise TypeError("Must be IPAG.feature_space!")
+               
+    def cluster_distance(self, attribute, cluster1, cluster2, func=euclidean):
+        '''Return a distance measure computed by func of two cluster center vectors
+        within the IPAG.cluster_centers dictionary.'''
+        
+        if attribute not in self. cluster_centers:
+            raise KeyError('{} not found in self.cluster_centers!'.format(attribute))
+            
+        if isinstance(cluster1, list):
+            cluster1 = '-'.join(cluster1)
+
+        if isinstance(cluster2, list):
+            cluster2 = '-'.join(cluster2)
+            
+        return func(self.cluster_centers[attribute][cluster1], self.cluster_centers[attribute][cluster2])
+
+
 
     def cluster_affinity_attrs(self, attribute, algorithm, feature_space, stretch=None, limit=None, centralize=1, **cluster_kwargs):
         '''Perform a clustering operation using the clustering() method and store the affinity of the node to each cluster
