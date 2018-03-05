@@ -463,9 +463,9 @@ class AbsorptionStage(LogicStage):
         n_neighbors = len(bundle_neighbors)
         norm_ranked_neighbors = {cluster: count/n_neighbors for cluster, count in ranked_neighbors.items()}
         
-        dist_ranked_neighbors = {cluster: bundle.Graph.cluster_distance \
+        dist_ranked_neighbors = {cluster: bundle.graph.cluster_distance \
                                  (bundle.attribute, bundle.feature_space.label, cluster)/self.kwargs['norm_distance'] \
-                                 for cluster in Counter.keys()}
+                                 for cluster in ranked_neighbors.keys()}
         
         n_factor, d_factor = self.kwargs['factors']
         index = lambda neighbor: n_factor*norm_ranked_neighbors[neighbor] + d_factor*dist_ranked_neighbors[neighbor]

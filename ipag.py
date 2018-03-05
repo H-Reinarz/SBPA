@@ -17,6 +17,32 @@ import sklearn.cluster
 from scipy.spatial.distance import euclidean
 
 
+def get_internal_distance(feature_space, percentile=100, func=euclidean):
+    '''Return a specified percentile of the maximum distance
+    computable by func within the given feature space. Returns the maximum distance as default.'''
+    
+    assert isinstance(feature_space, IPAG.feature_space), 'Must be IPAG.feature_space!'
+    
+    max_list = [np.max(feature_space.array[:,col]) for col in range(feature_space.array.shape[1])]
+    
+    min_list = [np.min(feature_space.array[:,col]) for col in range(feature_space.array.shape[1])]
+    
+    return (percentile/100)*func(np.array(min_list), np.array(max_list))
+    
+
+def feature_space_centroid(feature_space, func=np.median):
+    '''Returns the centroids of a feature space by averaging out dimensions
+    with a given function. Uses median as default'''
+    
+    assert isinstance(feature_space, IPAG.feature_space), 'Must be IPAG.feature_space!'
+    
+    centroid_list = [func(feature_space.array[:,col]) for col in range(feature_space.array.shape[1])]
+        
+    return np.array(centroid_list)
+
+
+
+
 def calc_attr_value(*, array, func, **kwargs):
     '''Helper function to apply a given function to
     a numpy array (i.e. an image) and return the result.
@@ -125,6 +151,8 @@ class IPAG(RAG):
             return SubGraph(self._graph, induced_nodes, self._EDGE_OK)
         return SubGraph(self, induced_nodes)
 
+
+    
 
     def produce_connectivity_matrix(self, subset, weight=None):
         '''Return a connectivity matrix of a subset of nodes.'''
@@ -288,7 +316,32 @@ class IPAG(RAG):
 
         return IPAG.feature_space(fs_array, tuple(order_list), label, con_matrix)
 
-#NOT UP TO DATE
+
+    def feature_space_subset(self, feature_space, subset, label=None):
+        '''Returns a feature space subset.'''
+        
+        filter_func = lambda pair: pair[1] in subset
+        
+        new_order = []
+        index_list = []
+        for ix, node_to_keep in filter(filter_func, enumerate(feature_space.order)):
+            index_list.append(ix)
+            new_order.append(node_to_keep)
+        
+        
+        
+        index_array = np.array(index_list, dtype=np.int64)
+        
+        
+        new_array = feature_space.array[index_array, :]
+        
+        if label is None:
+            label = feature_space.label
+            
+        new_conn_matrix = self.produce_connectivity_matrix(new_order)
+            
+        return self.feature_space(new_array, tuple(new_order), label, new_conn_matrix)
+
 
     def attribute_divided_fs_arrays(self, attr_config, div_attr, max_layer=None, subset=None, exclude=()):
         '''Return a feature space array for every value of a specified attribute.
@@ -386,15 +439,32 @@ class IPAG(RAG):
                 else:
                     self.node[node][attribute] = [str(label)]
 
-            for cluster in range(cluster_obj.shape[0]):
-                center_vector = cluster_obj.cluster_centers_[cluster, :]
+            if hasattr(cluster_obj, 'cluster_centers_'):
+                new_clusters = cluster_obj.cluster_centers_.shape[0]
+                get_center = lambda c: cluster_obj.cluster_centers_[c, :]
+                
+            else:
+                new_clusters = cluster_kwargs['n_clusters']
+                
+                make_fs = lambda c_layers: self.feature_space_subset(feature_space, \
+                                                              self.filter_by_attribute(attribute, [c_layers]))             
+                
+                get_center = lambda c: feature_space_centroid(make_fs(list(feature_space.label) + [str(c)]))
+
+
+            for cluster in range(new_clusters):
+                center_vector = get_center(cluster)
                 
                 if attribute not in self.cluster_centers:
                     self.cluster_centers[attribute] = {}
                 
-                key = feature_space.label
-                key = key.append(str(cluster))
-                key_string = '-'.join(key)
+                key = list(feature_space.label)
+                if key is not None:
+                    key.append(str(cluster))
+                    key_string = '-'.join(key)
+                else:
+                    key_string = str(cluster)
+                    
                 self.cluster_centers[attribute][key_string] = center_vector
 
             if return_clust_obj:
@@ -477,6 +547,10 @@ class IPAG(RAG):
         if not isinstance(fs, IPAG.feature_space):
             raise TypeError("To Isolate Feature the input must be IPAG.feature_space!")
 
+    
+
+        #center_vector = self.cluster_centers[attribute]['-'.join(fs.label)]
+              
         layer_dict = {}
 
         processed = set() # Keep track which node has already been processed
@@ -485,10 +559,11 @@ class IPAG(RAG):
         for node in fs.order:
             if node in processed:
                 continue
-
+            
+            # Build up layer_dict
             current_layer_key = '-'.join(self.node[node][attribute])
             if  current_layer_key not in layer_dict:
-                layer_dict['-'.join(self.node[node][attribute])] = 0
+                layer_dict[current_layer_key] = 0 # new IDs
 
             neighbour_list = [node]
             neighbour_set = set(neighbour_list)
@@ -501,11 +576,34 @@ class IPAG(RAG):
 
                 self.node[neighbour][attribute].append(str(layer_dict[current_layer_key]))
 
-            layer_dict[current_layer_key] += 1
+            layer_dict[current_layer_key] += 1 # Set id counter higher for next id
 
 
             processed.update(neighbour_list)
+        
+#        for isolated_label in layer_dict.keys():
+#            
+#            key = list(fs.label)
+#            #key = list(isolated_label)
+#            key.append(isolated_label)
+#            
+#            key_string = '-'.join(key)
+#            print("Isolated Label: ", '-'.join(key))
+#            
+#            self.cluster_centers[attribute][key_string] = center_vector
 
+        for base, new_patches in layer_dict.items():
+             center_vector = self.cluster_centers[attribute][base]
+             
+             for patch in range(new_patches):
+                
+                key = base.split('-')
+                key.append(str(patch))
+                
+                key_string = '-'.join(key)
+             
+                self.cluster_centers[attribute][key_string] = center_vector                 
+                
         print(layer_dict)
 
 
@@ -604,7 +702,6 @@ class IPAG(RAG):
         new_rag.normalize_attribute('color')
 
         return new_rag
-
 
 
 

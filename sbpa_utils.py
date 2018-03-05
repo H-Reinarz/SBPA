@@ -6,8 +6,8 @@ Created on Thu Nov  9 23:19:31 2017
 """
 import numpy as np
 import time
-from scipy.spatial.distance import euclidean
-from ipag import IPAG
+
+
 
 def remove_channels(image, channels_to_remove):
     '''Takes list of channel indices to remove from an image'''
@@ -119,19 +119,13 @@ def filter_cluster_image(cluster_image, reference_image, filter_value):
 
 
 
-def get_internal_distance(feature_space, percentile=100, func=euclidean):
-    '''Return a specified percentile of the maximum distance
-    computable by func within the given feature space. Returns the maximum distance as default.'''
-    
-    assert isinstance(feature_space, IPAG.feature_space), 'Must be IPAG.feature_space!'
-    
-    max_list = [np.max(feature_space.array[:,col]) for col in range(feature_space.array.shape[1])]
-    
-    min_list = [np.min(feature_space.array[:,col]) for col in range(feature_space.array.shape[1])]
-    
-    return (percentile/100)*func(np.array(min_list), np.array(max_list))
-    
 
+
+
+
+        
+    
+    
 
 class Stopwatch(object):
     def __init__(self):
