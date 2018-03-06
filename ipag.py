@@ -15,7 +15,7 @@ from skimage.future.graph import RAG
 from skimage.measure import regionprops
 import sklearn.cluster
 from scipy.spatial.distance import euclidean
-
+from ._sp_neighbors import _count_transitions
 
 def get_internal_distance(feature_space, percentile=100, func=euclidean):
     '''Return a specified percentile of the maximum distance
@@ -71,9 +71,34 @@ class IPAG(RAG):
     def __init__(self, seg_img, **attr):
         '''IPAG is initialized with the parents initializer along
         with additional attributes.'''
-
+        ###DEPRECATED
         #Call the RAG constructor
-        super().__init__(label_image=seg_img, connectivity=1, data=None, **attr)
+        #super().__init__(label_image=seg_img, connectivity=1, data=None, **attr)
+        ###
+        
+        #Call the networkx.Graph constructor
+        super(RAG, self).__init__(**attr)
+
+        if self.number_of_nodes() == 0:
+            self.max_id = 0
+        else:
+            self.max_id = max(self.nodes_iter())
+
+        transition_array = _count_transitions(seg_img)
+        
+        rows, columns = transition_array.shape
+        
+        max_length = 0
+        for row in range(rows):
+            for col in range(row+1):
+                count = transition_array[row, col]
+                if count > 0:
+                     super().add_edge(row, col, length=count)
+                     if count > max_length: max_length = count
+                
+        for n1, n2, data in self.edges(data=True):
+            data.update(norm_length = round(data['length']/max_length, 2))
+
 
         #Store seg_img as attribute
         self.seg_img = seg_img
