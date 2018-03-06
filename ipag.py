@@ -179,7 +179,7 @@ class IPAG(RAG):
 
     
 
-    def produce_connectivity_matrix(self, subset, weight=None):
+    def produce_connectivity_matrix(self, subset, weight='norm_length'):
         '''Return a connectivity matrix of a subset of nodes.'''
         sub_graph = self.subgraph(nodes=list(set(subset)))
         connectivity = nx.adjacency_matrix(sub_graph, weight)
