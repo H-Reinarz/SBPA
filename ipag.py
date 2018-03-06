@@ -161,28 +161,12 @@ class IPAG(RAG):
             #Assign attributes to node
             self.node[node].update({name:attr_value})
 
-
-    def subgraph(self, nodes):
-        """Return the subgraph induced on nodes in nodes list.
-
-        The induced subgraph of the graph contains the nodes in node list
-        and the edges between those nodes.
-        Implemented in ipag to overwrite method of the base class
-        """
-        induced_nodes = nx.filters.show_nodes(self.nbunch_iter(nodes))
-        SubGraph = nx.graphviews.SubGraph
-        # if already a subgraph, don't make a chain
-        if hasattr(self, '_NODE_OK'):
-            return SubGraph(self._graph, induced_nodes, self._EDGE_OK)
-        return SubGraph(self, induced_nodes)
-
-
     
 
     def produce_connectivity_matrix(self, subset, weight='norm_length'):
         '''Return a connectivity matrix of a subset of nodes.'''
-        sub_graph = self.subgraph(nodes=list(set(subset)))
-        connectivity = nx.adjacency_matrix(sub_graph, weight)
+        subset = set(subset)
+        connectivity = nx.adjacency_matrix(self, subset, weight)
 
         return connectivity
 
