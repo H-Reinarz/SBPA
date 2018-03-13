@@ -8,7 +8,7 @@ Created on Sat Jan  6 16:16:39 2018
 import sys, traceback
 from collections import namedtuple, deque, Counter
 from itertools import chain
-
+from .ipag import IPAG
 
 threshhold = namedtuple('Threshhold', ['operator', 'value'])
 
@@ -34,6 +34,14 @@ def _format_b(b):
         
     return string
     
+def find_members(b):
+    node_set = set()
+    
+    for node in b.graph:
+        if b.graph.node[node][b.attribute] == b.feature_space.label:
+            node_set.add(node)
+
+    return tuple(sorted(node_set))
 
 
 
@@ -443,10 +451,20 @@ class RectifySplittingStage(LogicStage):
 #            bundle.graph.node[node][bundle.attribute] = new_layer_list
         
 
+
+
 class AbsorptionStage(LogicStage):
     '''Absorption Stage'''
     
     def react_to_true(self, bundle):
+        
+        new_fs = bundle.graph.basic_feature_space_array(bundle.attr_config, bundle.feature_space.label, subset=find_members(bundle))
+        
+        bundle = proc_bundle(bundle.graph, bundle.attribute, bundle.attr_config, bundle.metric_config, 
+                             new_fs, bundle.graph.apply_group_metrics(new_fs, bundle.metric_config))
+
+        if not self.evaluate(bundle.metric_dict):
+            self.react_to_false(bundle)
         
         bundle_neighbors = set()
         
@@ -591,7 +609,7 @@ class DynamicClustering(dict):
         #Post porcessing
         if self.post_processing_stage is not None:
             post_proc_bundles = sorted(chain(self.post_processing_stage.queue_false, self.post_processing_stage.queue_true), \
-                                       key=lambda e: e[1].metric_dict['pixel_size'], reverse=True)
+                                       key=lambda e: e[1].metric_dict['pixel_size'])
             
             for element in post_proc_bundles:
                 flag, bundle, sender = element
