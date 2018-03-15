@@ -6,7 +6,7 @@ Created on Sat Jan  6 16:16:39 2018
 @author: hre070
 """
 import sys, traceback
-from collections import namedtuple, deque, Counter
+from collections import namedtuple, deque, Counter, defaultdict
 from itertools import chain
 from .ipag import IPAG
 
@@ -466,24 +466,22 @@ class AbsorptionStage(LogicStage):
         if not self.evaluate(bundle.metric_dict):
             self.react_to_false(bundle)
         
-        bundle_neighbors = set()
+        bundle_neighbors = defaultdict(int)
         
         for node in bundle.feature_space.order:
             for neighbor in bundle.graph.neighbors(node):
                 if neighbor not in bundle.feature_space.order:
-                    bundle_neighbors.add(neighbor)
+                    bundle_neighbors['-'.join(bundle.graph.node[neighbor][bundle.attribute])] += bundle.graph.edges[node, neighbor]['length']
+                    
         
-        cluster_list = ['-'.join(bundle.graph.node[neighbor][bundle.attribute]) for neighbor in bundle_neighbors]
-        
-        ranked_neighbors = Counter(cluster_list)
         
         #NEW CODE
-        n_neighbors = len(bundle_neighbors)
-        norm_ranked_neighbors = {cluster: count/n_neighbors for cluster, count in ranked_neighbors.items()}
+        patch_boundary = sum(bundle_neighbors.values())
+        norm_ranked_neighbors = {cluster: boundary/patch_boundary for cluster, boundary in bundle_neighbors.items()}
         
         dist_ranked_neighbors = {cluster: bundle.graph.cluster_distance \
                                  (bundle.attribute, bundle.feature_space.label, cluster)/self.kwargs['norm_distance'] \
-                                 for cluster in ranked_neighbors.keys()}
+                                 for cluster in bundle_neighbors.keys()}
         
         n_factor, d_factor = self.kwargs['factors']
         index = lambda neighbor: n_factor*norm_ranked_neighbors[neighbor] + d_factor*dist_ranked_neighbors[neighbor]
