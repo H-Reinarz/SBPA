@@ -17,39 +17,41 @@ B = 2
 
 
 def GLI(image):
-    '''Returns Green Leaf Index'''
+    '''Returns Green Leaf Index
+    https://www.indexdatabase.de/db/i-single.php?id=375 '''
     return (2*image[:,:,G] - image[:,:,R] - image[:,:,B]) / (2*image[:,:,G] + image[:,:,R] + image[:,:,B])
  
 def VARI(image):
-    '''Returns Visible Atmospherically Resistant Index'''
+    '''Returns Visible Atmospherically Resistant Index
+     https://calmit.unl.edu/people/agitelson2/pdf/07_IJRS-2002_23-2002.pdf'''
+     
     return (image[:,:,G] - image[:,:,R]) / (image[:,:,G] + image[:,:,R] - image[:,:,B])
  
 def VVI(image):
-    '''Returns Visible Vegetation Index'''
+    '''Returns Visible Vegetation Index
+    http://phl.upr.edu/projects/visible-vegetation-index-vvi '''
     return (1 - abs((image[:,:,R] - 30) / (image[:,:,R] + 30))) * (1 - abs((image[:,:,G] - 50) / (image[:,:,G] + 50))) * (1 - abs((image[:,:,B] - 1) / (image[:,:,B] + 1)))
  
-def NDTI(image):
-    '''Returns Normalized difference turbidity index'''
-    return (image[:,:,R] - image[:,:,G]) / (image[:,:,R] + image[:,:,G])
-
 def RI(image):
-    '''Returns Redness index'''
-    return (image[:,:,R]**2) / (image[:,:,B] * image[:,:,G]**3)
-
-def CI(image):
-    '''Returns Soil Color Index'''
+    '''Returns Normalized Difference Red/Green Redness Index
+    https://www.indexdatabase.de/db/i-single.php?id=74 '''
     return (image[:,:,R] - image[:,:,G]) / (image[:,:,R] + image[:,:,G])
- 
-def BI(image):
-    '''Returns Brightness Index'''
-    return (np.sqrt((image[:,:,R]**2 + image[:,:,G]**2 + image[:,:,B]*2) / 3))
 
-def SI(image):
-    '''Returns Spectral Slope Saturation Index'''
-    return (image[:,:,R] - image[:,:,B]) / (image[:,:,R] + image[:,:,B])
+#def RI2(image):
+#    '''Returns Redness index'''
+#    return (image[:,:,R]**2) / (image[:,:,B] * image[:,:,G]**3)
+ 
+#def BI(image):
+#    '''Returns Brightness Index'''
+#    return (np.sqrt((image[:,:,R]**2 + image[:,:,G]**2 + image[:,:,B]*2) / 3))
+
+#def SI(image):
+#    '''Returns Spectral Slope Saturation Index'''
+#    return (image[:,:,R] - image[:,:,B]) / (image[:,:,R] + image[:,:,B])
 
 def HI(image):
-    '''Returns Primary colours Hue Index'''
+    '''Returns Shape Index
+    https://www.indexdatabase.de/db/i-single.php?id=79'''
     return ((2*image[:,:,R] - image[:,:,G] - image[:,:,B]) / (image[:,:,G] - image[:,:,B]))
     
 def TGI(image):
@@ -57,11 +59,26 @@ def TGI(image):
     return -0.5*(190*(image[:,:,R] - image[:,:,G]) - 120 * (image[:,:,R] - image[:,:,B]))
 
 def NGRDI(image):
-    '''Returns Normalized green red difference index'''
+    '''Returns Normalized green red difference index
+    https://www.indexdatabase.de/db/i-single.php?id=390 '''
     return ((image[:,:,G] - image[:,:,R]) / (image[:,:,G] + image[:,:,R]))
 
+def RB(image):
+    '''Returns Red-Blue ratio
+    https://www.indexdatabase.de/db/i-single.php?id=203 '''
+    return (image[:,:,R] / image[:,:,B])
 
+def RG(image):
+    '''Returns Red-Green ratio
+    https://www.indexdatabase.de/db/i-single.php?id=213 '''
+    return (image[:,:,R] / image[:,:,G])
 
+def CI(image):
+    '''Returns Coloration index
+    https://www.indexdatabase.de/db/i-single.php?id=11 '''
+    return ((image[:,:,R] - image[:,:,B]) / image[:,:,R])
+
+    
 def make_rgb_indices(img, normalize = True, zeros = 1):
     '''Returns an indices object and a dictionary of gli, vvi, ntdi, ci,
     bi, si, tgi, ngrdi'''
@@ -70,15 +87,17 @@ def make_rgb_indices(img, normalize = True, zeros = 1):
         raise TypeError("Image has to be unsigned integer for creating RGB Indices!")
     
     image = np.copy(img)
-    image = value_to_value(image,0, zeros)
+    image[image == 0] = zeros
     image = img_as_float(image)    
     
     rgbi_dict = {"gli":GLI(image),
                 "vvi" : VVI(image),
-                "ntdi" : NDTI(image),
+                "vari" : VARI(image),
                 "ci" : CI(image),
-                "bi" : BI(image),
-                "si" : SI(image),
+                "ri" : RI(image),
+                #"hi" : HI(image),
+                "rb" : RB(image),
+                "rg" : RG(image),
                 "tgi" : TGI(image),
                 "ngrdi" : NGRDI(image)}
     
