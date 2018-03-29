@@ -92,7 +92,7 @@ def make_rgb_indices(img, normalize = True, zeros = 1):
     
     rgbi_dict = {"gli":GLI(image),
                 "vvi" : VVI(image),
-                "vari" : VARI(image),
+                #"vari" : VARI(image),
                 "ci" : CI(image),
                 "ri" : RI(image),
                 #"hi" : HI(image),

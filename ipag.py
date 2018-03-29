@@ -659,6 +659,29 @@ class IPAG(RAG):
         return metric_dict
 
 
+
+
+    def produce_label_dict(self, attribute, max_layer=None, sort=False, dtype=np.int64):
+        '''Render an image (2D numpy array) of cluster labels based
+        on a cluster label node attribute.'''
+
+        if max_layer is not None:
+            attr_labels = {'-'.join(self.node[node][attribute][:max_layer]) for node in self.__iter__()}
+        else:
+            attr_labels = {'-'.join(self.node[node][attribute]) for node in self.__iter__()}
+
+
+        if sort:
+            sort_attr_lables = list(sorted(attr_labels, key=len))
+            label_dict = dict(zip(sort_attr_lables, range(len(attr_labels))))
+        else:
+            label_dict = dict(zip(attr_labels, range(len(attr_labels))))
+
+        return label_dict
+
+
+
+
     def produce_cluster_image(self, attribute, max_layer=None, sort=False, dtype=np.int64):
         '''Render an image (2D numpy array) of cluster labels based
         on a cluster label node attribute.'''

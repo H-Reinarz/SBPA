@@ -502,7 +502,7 @@ class AbsorptionStage(LogicStage):
                 bundle.graph.node[node][bundle.attribute] = new_layer_list
  
         else:
-            print('Skipping {} due to distance threshhold of {}'.format(_format_b(bundle), round(self.kwargs['dist_threshhold'])))
+            print('Skipping {} due to distance threshhold of {}'.format(_format_b(bundle), round(self.kwargs['dist_threshhold'], 2)))
 
 
 
