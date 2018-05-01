@@ -10,7 +10,7 @@ import numpy as np
 from statistics import mean
 
 
-from boundary import _get_length
+from .boundary import _get_length
 
 
 def single_label_jaccard(reference, label, segmentation, only_max=True):
@@ -42,7 +42,7 @@ def single_label_jaccard(reference, label, segmentation, only_max=True):
 
 
 
-def get_shape_complexity(reference, label, boundary='outer'):
+def get_shape_complexity(reference, label):
     mask = reference == label
     
     boundary_length = _get_length(mask.astype(np.int32))
@@ -54,19 +54,28 @@ def get_shape_complexity(reference, label, boundary='outer'):
 #    print('EQATION:', mask.sum(), '/', boundary_circle, '=', (mask.sum()/boundary_circle))
 #    print('='*40)
     
-    return(2-(mask.sum()/boundary_circle))
+    return (mask.sum()/boundary_circle)
+
+
+
+
+def get_accuracy_metrics(reference, segmentation):
+    
+    return {label: (get_shape_complexity(reference, label), single_label_jaccard(reference, label, segmentation)) \
+            for label in np.unique(reference)}
 
 
 
 
 
-def get_accuracy(reference, segmentation, mean_func=mean):
+
+def get_accuracy_index(reference, segmentation, mean_func=mean):
     
     assert reference.shape == segmentation.shape
     
     labels = np.unique(reference)
     
-    complexity_dict = {label: get_shape_complexity(reference, label) for label in labels}
+    complexity_dict = {label: 2-get_shape_complexity(reference, label) for label in labels}
 
     av_complexity = mean_func(list(complexity_dict.values()))
 
@@ -81,77 +90,77 @@ def get_accuracy(reference, segmentation, mean_func=mean):
     return results
 
 
-
-ref = np.array([[2,2,2,2,2,2,2,2,2,2],
-                [2,0,0,0,0,0,0,0,0,2],
-                [2,0,1,1,1,1,1,0,0,2],
-                [2,0,1,1,1,1,1,0,0,2],
-                [2,0,1,1,1,1,1,0,0,2],
-                [2,0,1,1,1,1,1,0,0,2],
-                [2,0,0,0,0,0,0,0,0,2],
-                [2,0,0,0,0,3,3,0,0,2],
-                [2,0,0,0,0,3,3,0,0,2],
-                [2,2,2,2,2,2,2,2,2,2]])
-
-#ref = np.array([[0,0,0,0,0,0,0,0,0,0],
-#                [0,0,0,0,0,0,0,0,0,0],
-#                [0,0,0,0,0,0,0,0,0,0],
-#                [0,0,0,1,1,1,1,0,0,0],
-#                [0,0,0,1,1,1,1,0,0,0],
-#                [0,0,0,1,1,1,1,0,0,0],
-#                [0,0,0,0,0,0,0,0,0,0],
-#                [0,0,0,0,0,0,0,0,0,0],
-#                [0,0,0,0,0,0,0,0,0,0],
-#                [0,0,0,0,0,0,0,0,0,0]])
-
+if __name__ == '__main__':
+    ref = np.array([[2,2,2,2,2,2,2,2,2,2],
+                    [2,0,0,0,0,0,0,0,0,2],
+                    [2,0,1,1,1,1,1,0,0,2],
+                    [2,0,1,1,1,1,1,0,0,2],
+                    [2,0,1,1,1,1,1,0,0,2],
+                    [2,0,1,1,1,1,1,0,0,2],
+                    [2,0,0,0,0,0,0,0,0,2],
+                    [2,0,0,0,0,3,3,0,0,2],
+                    [2,0,0,0,0,3,3,0,0,2],
+                    [2,2,2,2,2,2,2,2,2,2]])
+    
+    #ref = np.array([[0,0,0,0,0,0,0,0,0,0],
+    #                [0,0,0,0,0,0,0,0,0,0],
+    #                [0,0,0,0,0,0,0,0,0,0],
+    #                [0,0,0,1,1,1,1,0,0,0],
+    #                [0,0,0,1,1,1,1,0,0,0],
+    #                [0,0,0,1,1,1,1,0,0,0],
+    #                [0,0,0,0,0,0,0,0,0,0],
+    #                [0,0,0,0,0,0,0,0,0,0],
+    #                [0,0,0,0,0,0,0,0,0,0],
+    #                [0,0,0,0,0,0,0,0,0,0]])
+    
+        
+        
+        
+    seg = np.array([[0,0,0,0,0,0,0,0,0,0],
+                    [0,0,0,0,0,0,0,0,0,0],
+                    [0,0,1,1,1,1,1,0,0,0],
+                    [0,0,1,1,1,1,1,0,0,0],
+                    [0,0,1,1,1,1,1,0,0,0],
+                    [0,0,1,1,1,1,1,0,0,0],
+                    [0,0,0,0,0,0,0,0,0,0],
+                    [0,0,0,0,0,0,0,0,0,0],
+                    [0,0,0,0,0,0,0,0,0,0],
+                    [0,0,0,0,0,0,0,0,0,0]])
     
     
     
-seg = np.array([[0,0,0,0,0,0,0,0,0,0],
-                [0,0,0,0,0,0,0,0,0,0],
-                [0,0,1,1,1,1,1,0,0,0],
-                [0,0,1,1,1,1,1,0,0,0],
-                [0,0,1,1,1,1,1,0,0,0],
-                [0,0,1,1,1,1,1,0,0,0],
-                [0,0,0,0,0,0,0,0,0,0],
-                [0,0,0,0,0,0,0,0,0,0],
-                [0,0,0,0,0,0,0,0,0,0],
-                [0,0,0,0,0,0,0,0,0,0]])
-
-
-
+        
+    #seg = np.array([[0,0,0,0,0,0,0,0,0,0],
+    #                [0,0,0,0,0,0,0,0,0,0],
+    #                [0,0,1,1,1,1,1,0,0,0],
+    #                [0,0,1,1,1,1,1,0,0,0],
+    #                [0,0,1,1,2,2,2,0,0,0],
+    #                [0,0,1,1,2,2,2,0,0,0],
+    #                [0,0,0,0,0,0,0,0,0,0],
+    #                [0,0,0,0,0,0,0,0,0,0],
+    #                [0,0,0,0,0,0,0,0,0,0],
+    #                [0,0,0,0,0,0,0,0,0,0]])
     
-#seg = np.array([[0,0,0,0,0,0,0,0,0,0],
-#                [0,0,0,0,0,0,0,0,0,0],
-#                [0,0,1,1,1,1,1,0,0,0],
-#                [0,0,1,1,1,1,1,0,0,0],
-#                [0,0,1,1,2,2,2,0,0,0],
-#                [0,0,1,1,2,2,2,0,0,0],
-#                [0,0,0,0,0,0,0,0,0,0],
-#                [0,0,0,0,0,0,0,0,0,0],
-#                [0,0,0,0,0,0,0,0,0,0],
-#                [0,0,0,0,0,0,0,0,0,0]])
-
+        
+    #seg = np.array([[0,0,0,0,0,0,0,0,0,0],
+    #                [0,0,0,0,0,0,0,0,0,0],
+    #                [0,0,0,0,0,0,0,0,0,0],
+    #                [0,0,0,0,0,0,0,0,0,0],
+    #                [0,0,0,0,0,0,0,0,0,0],
+    #                [0,0,0,0,0,0,0,0,0,0],
+    #                [0,0,0,0,0,0,0,0,0,0],
+    #                [0,0,0,0,0,0,0,0,0,0],
+    #                [0,0,0,0,0,0,0,0,0,0],
+    #                [0,0,0,0,0,0,0,0,0,0]])
+    #    
+        
+    print(single_label_jaccard(ref, 1, seg, only_max=False))
     
-#seg = np.array([[0,0,0,0,0,0,0,0,0,0],
-#                [0,0,0,0,0,0,0,0,0,0],
-#                [0,0,0,0,0,0,0,0,0,0],
-#                [0,0,0,0,0,0,0,0,0,0],
-#                [0,0,0,0,0,0,0,0,0,0],
-#                [0,0,0,0,0,0,0,0,0,0],
-#                [0,0,0,0,0,0,0,0,0,0],
-#                [0,0,0,0,0,0,0,0,0,0],
-#                [0,0,0,0,0,0,0,0,0,0],
-#                [0,0,0,0,0,0,0,0,0,0]])
-#    
+    print(get_accuracy(ref, seg))
     
-print(single_label_jaccard(ref, 1, seg, only_max=False))
-
-print(get_accuracy(ref, seg))
-
-
-#mask = seg == 0
-#
-#int_mask = mask.astype(np.int32)
-#
-#print('Cython:',_get_length(int_mask))
+    
+    #mask = seg == 0
+    #
+    #int_mask = mask.astype(np.int32)
+    #
+    #print('Cython:',_get_length(int_mask))
