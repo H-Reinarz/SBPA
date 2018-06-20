@@ -5,8 +5,11 @@ Created on Thu Oct  5 11:46:28 2017
 
 @author: hre070
 """
+import numpy as np
+from matplotlib import pyplot as plt
 from skimage.measure import regionprops
-
+from skimage.segmentation.boundaries import find_boundaries
+from skimage.morphology import dilation, square
 
 
 def plot_sp_labels(axes, labels, fontsize, subset=None, abs_font=False, **text_kwargs):
@@ -93,3 +96,37 @@ def show_seeds(axes, labels, seeds, marker, **plot_kwargs):
 
     #decrement to restore original data
     labels -= 1
+
+
+def draw_boundaries(image, thickness=3):
+    bounds = find_boundaries(image, mode="thick", background=0)
+    bounds = bounds.astype(np.float64)
+    bounds = dilation(bounds, square(thickness))
+    bounds[bounds == 0] = np.nan
+    return bounds
+
+def plot_sbpa(background, segments, thickness, boundary_color, outputfile = None):
+    fig = plt.figure(frameon=False)
+    fig.set_size_inches(10,10)
+    ax = plt.Axes(fig, [0.,0.,1.,1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    ax.imshow(background)
+    ax.imshow(draw_boundaries(segments, thickness), cmap=boundary_color)
+    ax.axis('off')
+    if outputfile is not None:
+        fig.savefig(outputfile)
+        
+def plot_sbpa_categories(background, segments, thickness, boundary_color, 
+                         category_segments, category_colormap, alpha , outputfile = None):
+    fig = plt.figure(frameon=False)
+    fig.set_size_inches(10,10)
+    ax = plt.Axes(fig, [0.,0.,1.,1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    ax.imshow(background)
+    ax.imshow(category_segments, cmap=category_colormap, alpha=alpha)
+    ax.imshow(draw_boundaries(segments, thickness), cmap=boundary_color)
+    ax.axis('off')
+    if outputfile is not None:
+        fig.savefig(outputfile)

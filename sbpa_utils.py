@@ -6,7 +6,7 @@ Created on Thu Nov  9 23:19:31 2017
 """
 import numpy as np
 import time
-
+from sklearn.cluster import KMeans
 
 
 def remove_channels(image, channels_to_remove):
@@ -118,10 +118,47 @@ def filter_cluster_image(cluster_image, reference_image, filter_value):
     return cluster_image
 
 
+def categorize(segments, image, nc):
+    
+    ld_clusters = {}
+    
+    for label in np.unique(segments):
+        mask = segments == label
+        
+        ld_clusters[label] = [np.mean(image[:,:,z][mask]) for z in range(3)]
+        
+            
+    ld_feature_space = np.array(list(ld_clusters.values()))
+    
+    cluster_obj = KMeans(n_clusters=nc)
+    
+    cluster_obj.fit(ld_feature_space)
+    
+    ld_results = dict(zip(ld_clusters, cluster_obj.labels_))
+    
+    result = np.zeros_like(segments)
+    
+    for label in np.unique(segments):
+        mask = segments == label 
+        
+        result[mask] = ld_results[label]
+        
+    return result
 
 
+##Initialize log file and mock print function
+class DoubleLogStream(object):
+    def __init__(self, file, console):
+        self.file = file
+        self.console = console
 
+    def write(self, obj):
+        self.file.write(obj)
+        self.console.write(obj)
 
+    def flush(self):
+        self.file.flush()
+        self.console.flush()
 
         
     
