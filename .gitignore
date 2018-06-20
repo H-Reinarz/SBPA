@@ -11,3 +11,4 @@ cleanup
 *.obj
 *.so
 *.log
+SBPA_exampleScript.py
