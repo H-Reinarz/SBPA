@@ -15,7 +15,7 @@ from skimage.future.graph import RAG
 from skimage.measure import regionprops
 import sklearn.cluster
 from scipy.spatial.distance import euclidean
-from ._sp_neighbors import _count_transitions
+from ._LBP._sp_neighbors import _count_transitions
 
 def get_internal_distance(feature_space, percentile=100, func=euclidean):
     '''Return a specified percentile of the maximum distance

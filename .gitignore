@@ -1,7 +1,6 @@
 /LBP_BINS
 /build
 /__pycache__
-setup.py
 cleanup
 *.md5
 *.c
@@ -11,3 +10,4 @@ cleanup
 *.exp
 *.obj
 *.so
+*.log
