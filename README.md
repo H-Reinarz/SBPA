@@ -13,5 +13,5 @@ https://anaconda.org/anaconda/python
 On Linux everything should work fine as long as you have the build-essentials (gcc, etc.)
 
 ## Compile Cython files
-Navigate to the _LBP folder and run python setup.py build_ext --inplace in your Anaconda prompt (Windows) or your terminal (Linux).
+Navigate to the _LBP folder and run '''python setup.py build_ext --inplace''' in your Anaconda prompt (Windows) or your terminal (Linux).
 
